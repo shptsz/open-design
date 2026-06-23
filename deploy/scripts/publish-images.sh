@@ -7,8 +7,9 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-docker.io}"
 IMAGE_NAMESPACE="${IMAGE_NAMESPACE:-vanjayak}"
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-open-design}"
-NODE_BASE_IMAGE="${NODE_BASE_IMAGE:-docker.io/library/node:24-alpine}"
-RUNTIME_BASE_IMAGE="${RUNTIME_BASE_IMAGE:-docker.io/library/node:24-alpine}"
+DEFAULT_NODE_BASE_IMAGE="crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine"
+NODE_BASE_IMAGE="${NODE_BASE_IMAGE:-$DEFAULT_NODE_BASE_IMAGE}"
+RUNTIME_BASE_IMAGE="${RUNTIME_BASE_IMAGE:-$DEFAULT_NODE_BASE_IMAGE}"
 PUSH_STRATEGY="${PUSH_STRATEGY:-skopeo}"
 PRELOAD_BASE_IMAGES="${PRELOAD_BASE_IMAGES:-1}"
 DRY_RUN="${DRY_RUN:-0}"
@@ -107,8 +108,8 @@ Options:
   --image_namespace <namespace>   default: vanjayak
   --image_repository <name>       default: open-design
   --image <image-ref>             override full image ref
-  --node_base_image <image-ref>   default: docker.io/library/node:24-alpine
-  --runtime_base_image <image-ref> default: docker.io/library/node:24-alpine
+  --node_base_image <image-ref>   default: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
+  --runtime_base_image <image-ref> default: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
   --push_strategy <skopeo|buildx> default: skopeo
   --preload_base_images <0|1>     default: 1
   --skopeo_authfile <path>        default: ~/.docker/config.json

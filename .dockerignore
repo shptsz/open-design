@@ -8,7 +8,14 @@
 .ocd
 node_modules
 dist
+.next
+out
+.turbo
+.tmp
+.pnpm-store
 coverage
+playwright-report
+test-results
 *.log
 tsconfig.tsbuildinfo
 deploy/*.env

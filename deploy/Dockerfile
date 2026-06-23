@@ -1,7 +1,9 @@
 ARG NODE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
 ARG RUNTIME_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
+# Keep the legacy ARG names declared for older build scripts, but pin FROM to
+# ACR directly so CI cannot override the base image back to Docker Hub.
 
-FROM ${NODE_IMAGE} AS build
+FROM crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine AS build
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
@@ -17,23 +19,49 @@ ENV https_proxy=${https_proxy}
 ENV no_proxy=${no_proxy}
 ENV NO_PROXY=${NO_PROXY}
 ENV CI=true
+ENV PNPM_HOME=/pnpm
+ENV PNPM_STORE_PATH=/pnpm/store
+ENV PATH="${PNPM_HOME}:${PATH}"
 
-RUN apk add --no-cache python3 make g++
+RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories && \
+    apk add --no-cache python3 make g++
 
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY scripts/postinstall.mjs ./scripts/postinstall.mjs
-COPY packages ./packages
-COPY tools ./tools
+COPY packages/agui-adapter/package.json ./packages/agui-adapter/package.json
+COPY packages/components/package.json ./packages/components/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
+COPY packages/diagnostics/package.json ./packages/diagnostics/package.json
+COPY packages/download/package.json ./packages/download/package.json
+COPY packages/host/package.json ./packages/host/package.json
+COPY packages/launcher-proto/package.json ./packages/launcher-proto/package.json
+COPY packages/metatool/package.json ./packages/metatool/package.json
+COPY packages/platform/package.json ./packages/platform/package.json
+COPY packages/plugin-runtime/package.json ./packages/plugin-runtime/package.json
+COPY packages/registry-protocol/package.json ./packages/registry-protocol/package.json
+COPY packages/sidecar/package.json ./packages/sidecar/package.json
+COPY packages/sidecar-proto/package.json ./packages/sidecar-proto/package.json
+COPY tools/dev/package.json ./tools/dev/package.json
+COPY tools/pack/package.json ./tools/pack/package.json
+COPY tools/serve/package.json ./tools/serve/package.json
 COPY apps/daemon/package.json ./apps/daemon/package.json
 COPY apps/web/package.json ./apps/web/package.json
 COPY e2e/package.json ./e2e/package.json
-RUN corepack enable && \
+RUN --mount=type=cache,id=corepack-cache,target=/root/.cache/node/corepack \
+    --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    corepack enable && \
     corepack prepare pnpm@10.33.2 --activate && \
-    pnpm install --frozen-lockfile
+    pnpm fetch --frozen-lockfile
 
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --offline
+
+COPY packages ./packages
+COPY tools ./tools
 COPY apps ./apps
-RUN pnpm --filter @open-design/daemon build && \
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm --filter @open-design/daemon build && \
     pnpm --filter @open-design/web build && \
     pnpm --filter @open-design/daemon deploy --legacy --prod /app/deploy/daemon && \
     pnpm store prune && \
@@ -78,9 +106,10 @@ COPY prompt-templates ./prompt-templates
 COPY assets ./assets
 COPY plugins/_official ./plugins/_official
 
-FROM ${RUNTIME_IMAGE}
+FROM crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
 
-RUN apk add --no-cache tini poppler-utils && \
+RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories && \
+    apk add --no-cache tini poppler-utils && \
     addgroup -S -g 1001 open-design && \
     adduser -S -D -H -u 1001 -G open-design open-design
 
