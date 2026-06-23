@@ -28,38 +28,29 @@ RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/a
     apk add --no-cache python3 make g++
 
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY scripts/postinstall.mjs ./scripts/postinstall.mjs
-COPY packages/agui-adapter/package.json ./packages/agui-adapter/package.json
-COPY packages/components/package.json ./packages/components/package.json
-COPY packages/contracts/package.json ./packages/contracts/package.json
-COPY packages/diagnostics/package.json ./packages/diagnostics/package.json
-COPY packages/download/package.json ./packages/download/package.json
-COPY packages/host/package.json ./packages/host/package.json
-COPY packages/launcher-proto/package.json ./packages/launcher-proto/package.json
-COPY packages/metatool/package.json ./packages/metatool/package.json
-COPY packages/platform/package.json ./packages/platform/package.json
-COPY packages/plugin-runtime/package.json ./packages/plugin-runtime/package.json
-COPY packages/registry-protocol/package.json ./packages/registry-protocol/package.json
-COPY packages/sidecar/package.json ./packages/sidecar/package.json
-COPY packages/sidecar-proto/package.json ./packages/sidecar-proto/package.json
-COPY tools/dev/package.json ./tools/dev/package.json
-COPY tools/pack/package.json ./tools/pack/package.json
-COPY tools/serve/package.json ./tools/serve/package.json
-COPY apps/daemon/package.json ./apps/daemon/package.json
-COPY apps/web/package.json ./apps/web/package.json
-COPY e2e/package.json ./e2e/package.json
+
+# `pnpm fetch` only needs the lockfile, so this layer is cached as long as
+# pnpm-lock.yaml is unchanged — independent of any source edits.
+COPY pnpm-lock.yaml ./
 RUN --mount=type=cache,id=corepack-cache,target=/root/.cache/node/corepack \
     --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     corepack enable && \
     corepack prepare pnpm@10.33.2 --activate && \
     pnpm fetch --frozen-lockfile
 
+# Workspace package/tool sources must exist before `pnpm install`, because the
+# root postinstall (scripts/postinstall.mjs) compiles packages/* and tools/*
+# into the dist/*.d.ts that apps/daemon's tsc build resolves against.
+COPY package.json pnpm-workspace.yaml ./
+COPY scripts/postinstall.mjs ./scripts/postinstall.mjs
+COPY packages ./packages
+COPY tools ./tools
+COPY apps/daemon/package.json ./apps/daemon/package.json
+COPY apps/web/package.json ./apps/web/package.json
+COPY e2e/package.json ./e2e/package.json
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --offline
 
-COPY packages ./packages
-COPY tools ./tools
 COPY apps ./apps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm --filter @open-design/daemon build && \
