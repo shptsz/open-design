@@ -1,6 +1,6 @@
 <h1 align="center">Open Design: The open-source Claude Design alternative</h1>
 
-> 🔥 **Open Design 0.10.0 is here: the all-in-one Agentic design workspace.** The whole craft now lives in one window — go from a vague idea to discovering references, gathering material, editing interactively, queuing comments, polishing motion, and handing off to an editor or a Code Agent — without leaving the app. With parallel sessions, it stops feeling like one assistant and starts feeling like a local design team working for you. [Download 0.10.0](https://github.com/nexu-io/open-design/releases) · [Join the discussion](https://github.com/nexu-io/open-design/discussions/4153)
+> 🔥 **Open Design 0.10.0 is here: the all-in-one Agentic design workspace.** The whole craft now lives in one window — go from a vague idea to discovering references, gathering material, editing interactively, queuing comments, polishing motion, and handing off to an editor or a Code Agent — without leaving the app. With parallel sessions, it stops feeling like one assistant and starts feeling like a local design team working for you. [Download 0.10.0](https://github.com/shptsz/open-design/releases) · [Join the discussion](https://github.com/shptsz/open-design/discussions/4153)
 >
 > ⚡ **Open Design AMR (Agentic Model Router) — the official model service.** One recharge to use GPT, Claude, Gemini, and DeepSeek inside Open Design: 20+ flagship models, zero config, billed by real token usage. [Try AMR](https://open-design.ai/amr/)
 >
@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/nexu-io/open-design/releases"><img alt="release" src="https://img.shields.io/github/v/release/nexu-io/open-design?style=flat&color=blueviolet&label=release&include_prereleases&display_name=tag" /></a>
+  <a href="https://github.com/shptsz/open-design/releases"><img alt="release" src="https://img.shields.io/github/v/release/shptsz/open-design?style=flat&color=blueviolet&label=release&include_prereleases&display_name=tag" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat" /></a>
   <a href="https://discord.gg/qhbcCH8Am4"><img alt="discord" src="https://img.shields.io/discord/1479002485040480266?style=flat&logo=discord&logoColor=white&label=discord&color=5865F2&cacheSeconds=3600" /></a>
   <a href="QUICKSTART.md"><img alt="quickstart" src="https://img.shields.io/badge/quickstart-3%20commands-green?style=flat" /></a>
@@ -290,9 +290,9 @@ Open Design (OD) is the open-source alternative. Same loop, same artifact-first 
 
 The fastest way to use Open Design. No Node, no pnpm, no clone.
 
-- **macOS** (Apple Silicon · Intel x64) → [**open-design.ai**](https://open-design.ai/) or [GitHub Releases](https://github.com/nexu-io/open-design/releases)
-- **Windows** (x64) → [**open-design.ai**](https://open-design.ai/) or [GitHub Releases](https://github.com/nexu-io/open-design/releases)
-- **Linux** (AppImage, optional lane) → [GitHub Releases](https://github.com/nexu-io/open-design/releases)
+- **macOS** (Apple Silicon · Intel x64) → [**open-design.ai**](https://open-design.ai/) or [GitHub Releases](https://github.com/shptsz/open-design/releases)
+- **Windows** (x64) → [**open-design.ai**](https://open-design.ai/) or [GitHub Releases](https://github.com/shptsz/open-design/releases)
+- **Linux** (AppImage, optional lane) → [GitHub Releases](https://github.com/shptsz/open-design/releases)
 
 After install: the app auto-detects every coding-agent CLI on your `PATH`, loads 100+ skills and 150 design systems, and lets you type a brief in the entry view.
 
@@ -318,7 +318,7 @@ The agent reads `skills/`, picks the right `SKILL.md`, binds the `DESIGN.md` you
 ### 🐳 Run with Docker
 
 ```bash
-git clone https://github.com/nexu-io/open-design.git
+git clone https://github.com/shptsz/open-design.git
 cd open-design/deploy
 cp .env.example .env
 echo "OD_API_TOKEN=$(openssl rand -hex 32)" >> .env
@@ -331,7 +331,7 @@ docker compose up -d
 ### 🧑‍💻 Run from source
 
 ```bash
-git clone https://github.com/nexu-io/open-design.git
+git clone https://github.com/shptsz/open-design.git
 cd open-design
 corepack enable && pnpm install
 pnpm tools-dev run web
@@ -592,10 +592,10 @@ Real people behind every channel.
 
 - 💬 **Discord** — daily chat, plugin sharing, questions → [**discord.gg/qhbcCH8Am4**](https://discord.gg/qhbcCH8Am4)
 - 🐦 **X / Twitter** — release notes, milestones, behind the scenes → [**@nexudotio**](https://x.com/nexudotio)
-- 🗣️ **GitHub Discussions** — deep Q&A, RFCs, "show your work" → [**Discussions**](https://github.com/nexu-io/open-design/discussions)
-- 🐛 **GitHub Issues** — bug reports, feature requests → [**Issues**](https://github.com/nexu-io/open-design/issues)
+- 🗣️ **GitHub Discussions** — deep Q&A, RFCs, "show your work" → [**Discussions**](https://github.com/shptsz/open-design/discussions)
+- 🐛 **GitHub Issues** — bug reports, feature requests → [**Issues**](https://github.com/shptsz/open-design/issues)
 
-The [`good-first-issue`](https://github.com/nexu-io/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) and [`help-wanted`](https://github.com/nexu-io/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) labels are the easiest way in.
+The [`good-first-issue`](https://github.com/shptsz/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) and [`help-wanted`](https://github.com/shptsz/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) labels are the easiest way in.
 
 ---
 
@@ -611,7 +611,7 @@ Open Design keeps moving because contributors — designers, engineers, prompt a
 | A new **design system** | Drop a `DESIGN.md` using the 9-section schema | [`design-systems/<brand>/`](design-systems/) |
 | A new **plugin** | Drop `open-design.json` + manifest under a category folder | [`plugins/community/`](plugins/community/) · spec in [`plugins/spec/SPEC.md`](plugins/spec/SPEC.md) · agent dev guide in [`plugins/spec/AGENT-DEVELOPMENT.md`](plugins/spec/AGENT-DEVELOPMENT.md) |
 | Support a new **coding-agent CLI** | One adapter entry + stream parser | [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) |
-| Fix a bug or polish UI | Browse the [`good-first-issue`](https://github.com/nexu-io/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) label | [Issues →](https://github.com/nexu-io/open-design/issues) |
+| Fix a bug or polish UI | Browse the [`good-first-issue`](https://github.com/shptsz/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) label | [Issues →](https://github.com/shptsz/open-design/issues) |
 | Translate the docs | Update the `README.<lang>.md` files | [`TRANSLATIONS.md`](TRANSLATIONS.md) |
 
 ### 🤖 Contributing as an agent
@@ -620,7 +620,7 @@ If *you are the agent reading this*, the fastest path is:
 
 ```bash
 # 1. Boot locally
-git clone https://github.com/nexu-io/open-design.git
+git clone https://github.com/shptsz/open-design.git
 cd open-design && corepack enable && pnpm install
 pnpm tools-dev run web
 
@@ -680,8 +680,8 @@ Maintainer rules, promotion criteria, and the exit protocol → [`MAINTAINERS.md
 
 Thanks to everyone who has taken part — code, docs, feedback, a sharp issue, a new skill, a new design system.
 
-<a href="https://github.com/nexu-io/open-design/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=nexu-io/open-design&max=500&columns=20&anon=1&cache_bust=2026-05-30" alt="Open Design contributors" />
+<a href="https://github.com/shptsz/open-design/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=shptsz/open-design&max=500&columns=20&anon=1&cache_bust=2026-05-30" alt="Open Design contributors" />
 </a>
 
 ---
@@ -699,16 +699,16 @@ The SVG above is regenerated daily by [`.github/workflows/metrics.yml`](.github/
 ## Star us
 
 <p align="center">
-  <a href="https://github.com/nexu-io/open-design"><img src="https://repo-assets.open-design.ai/resources/images/star-us.png" alt="Star Open Design on GitHub — github.com/nexu-io/open-design" width="100%" /></a>
+  <a href="https://github.com/shptsz/open-design"><img src="https://repo-assets.open-design.ai/resources/images/star-us.png" alt="Star Open Design on GitHub — github.com/shptsz/open-design" width="100%" /></a>
 </p>
 
 If this saved you thirty minutes, give it a ★. Stars don't pay rent — but they tell the next designer, agent, and contributor that this experiment is worth their attention. One click, three seconds, a real signal.
 
-<a href="https://star-history.com/#nexu-io/open-design&Date">
+<a href="https://star-history.com/#shptsz/open-design&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=nexu-io/open-design&type=Date&theme=dark&cache_bust=2026-05-28" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=nexu-io/open-design&type=Date&cache_bust=2026-05-28" />
-    <img alt="Open Design star history" src="https://api.star-history.com/svg?repos=nexu-io/open-design&type=Date&cache_bust=2026-05-28" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=shptsz/open-design&type=Date&theme=dark&cache_bust=2026-05-28" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=shptsz/open-design&type=Date&cache_bust=2026-05-28" />
+    <img alt="Open Design star history" src="https://api.star-history.com/svg?repos=shptsz/open-design&type=Date&cache_bust=2026-05-28" />
   </picture>
 </a>
 

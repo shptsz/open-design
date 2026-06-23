@@ -1,0 +1,55 @@
+# Private-deployment overlay. Apply ON TOP of the base compose file:
+#
+#   docker compose \
+#     -f deploy/docker-compose.yml \
+#     -f deploy/docker-compose.private.yml \
+#     --env-file deploy/.env.private \
+#     up -d
+#
+# This overlay:
+#   - runs the OpenCode-enabled private image (deploy/Dockerfile.private),
+#   - turns Open Design's telemetry / updater fully off via env,
+#   - mounts a read-only OpenCode provider config pointing at your local model.
+#
+# The hard network boundary still lives at the host/proxy layer — see
+# deploy/private-egress/README.md. This file only stops Open Design from
+# attempting known outbound telemetry calls in the first place.
+
+name: open-design
+
+services:
+  open-design:
+    image: ${OPEN_DESIGN_PRIVATE_IMAGE:-open-design:private}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.private
+      args:
+        OPEN_DESIGN_BASE_IMAGE: ${OPEN_DESIGN_BASE_IMAGE:-open-design:base}
+        OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
+    environment:
+      # Fork telemetry kill switch — forces metrics/content consent off,
+      # nulls the PostHog config, and disables the Langfuse/relay sink.
+      OPEN_DESIGN_PRIVATE_DEPLOYMENT: "1"
+      # No auto-update checks against the public release feed.
+      OD_UPDATE_ENABLED: "0"
+      # Persisted, writable HOME for OpenCode auth/cache (data volume).
+      HOME: /app/.od/home
+      # Read-only OpenCode provider config pointing at the local model.
+      OPENCODE_CONFIG: /app/opencode/opencode.json
+      # Fresh private deployments should immediately use OpenCode + the local
+      # Qwen model instead of showing the upstream default CLI choice.
+      OPEN_DESIGN_DEFAULT_AGENT_ID: ${OPEN_DESIGN_DEFAULT_AGENT_ID:-opencode}
+      OPEN_DESIGN_DEFAULT_AGENT_MODEL: ${OPEN_DESIGN_DEFAULT_AGENT_MODEL:-local-qwen36/qwen3.6-35b-a3b-fp8}
+      # Defense-in-depth: blank any telemetry endpoints that might be
+      # inherited from the host environment. The private-deployment gate
+      # already ignores them, but an empty value removes all ambiguity.
+      POSTHOG_KEY: ""
+      POSTHOG_HOST: ""
+      OPEN_DESIGN_TELEMETRY_RELAY_URL: ""
+      LANGFUSE_PUBLIC_KEY: ""
+      LANGFUSE_SECRET_KEY: ""
+    volumes:
+      # Provider config (baseURL + apiKey for your internal model). Keep it
+      # read-only; copy deploy/opencode/opencode.example.json to
+      # deploy/opencode/opencode.json and edit before first boot.
+      - ./opencode:/app/opencode:ro

@@ -4470,6 +4470,21 @@ export async function startServer({
       // bearer; the loopback bypass exists for the localhost desktop
       // UI which has no proxy in the path.
       if (isLoopbackPeerAddress(req.socket?.remoteAddress)) return next();
+      // Browser EventSource cannot set Authorization headers. Accept the same
+      // short-lived deployment token as a query parameter for same-origin SSE
+      // endpoints; the web client stores it from ?od_api_token=... and only
+      // appends it to /api URLs.
+      const queryToken = typeof req.query.od_api_token === 'string'
+        ? req.query.od_api_token
+        : '';
+      if (queryToken && queryToken === apiToken) return next();
+      const cookieToken = req
+        .get('cookie')
+        ?.split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith('od_api_token='))
+        ?.slice('od_api_token='.length);
+      if (cookieToken && decodeURIComponent(cookieToken) === apiToken) return next();
       const auth = req.get('authorization') ?? '';
       const match = /^Bearer\s+(\S+)\s*$/i.exec(auth);
       if (!match || match[1] !== apiToken) {

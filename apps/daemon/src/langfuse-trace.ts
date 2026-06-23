@@ -31,6 +31,7 @@ import type {
   RunTimingAnalytics,
 } from './run-analytics-observability.js';
 import type { RunFailureClassification } from './run-failure-classification.js';
+import { isPrivateDeployment } from './private-deployment.js';
 import { readTelemetryEnvironment } from './telemetry-environment.js';
 
 // Langfuse US region: confirmed by an end-to-end smoke on 2026-05-07 — the
@@ -347,6 +348,12 @@ export function readLangfuseConfig(
 export function readTelemetrySinkConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): TelemetrySinkConfig | null {
+  // Private deployment hard-off: even if a relay URL or Langfuse credentials
+  // are accidentally injected into the env, no trace sink is resolved so
+  // reportRunCompleted/reportRunFeedback never open a connection. This is
+  // layered on top of the consent gate (app-config forces metrics/content
+  // off in private mode). See private-deployment.ts.
+  if (isPrivateDeployment(env)) return null;
   const relayUrl = env.OPEN_DESIGN_TELEMETRY_RELAY_URL?.trim();
   if (relayUrl) {
     return {

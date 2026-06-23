@@ -4,6 +4,36 @@ This deployment ships Open Design as a single Alpine-based runtime image. The
 daemon serves both the API and the built Next.js static export, so there is no
 separate nginx container.
 
+## Private / offline deployment (OpenCode + local model)
+
+For a self-hosted server that must not talk to the public internet — driving a
+local OpenAI-compatible model through OpenCode, with telemetry and the updater
+disabled — see:
+
+- [`Dockerfile.private`](./Dockerfile.private) — thin layer adding the OpenCode CLI.
+- [`docker-compose.private.yml`](./docker-compose.private.yml) — overlay that sets
+  `OPEN_DESIGN_PRIVATE_DEPLOYMENT=1` and mounts the OpenCode provider config.
+- [`private-egress/README.md`](./private-egress/README.md) — the network egress
+  allow-list (the real security boundary).
+
+For the Qwen3.6 LiteLLM service documented in
+`/Users/mayiming/IdeaProjects/xj_hr/litellm-deploy/QWEN_USAGE.md`, start from
+the dedicated template:
+
+```bash
+cp deploy/.env.private.example deploy/.env.private
+cp deploy/opencode/opencode.qwen36.example.json deploy/opencode/opencode.json
+```
+
+Then edit `deploy/.env.private` and set `OD_API_TOKEN`, and edit
+`deploy/opencode/opencode.json` replacing `<LITELLM_MASTER_KEY>` with the
+LiteLLM master key. The template points OpenCode at:
+
+```text
+baseURL: http://192.168.10.188:30400/v1
+model:   local-qwen36/qwen3.6-35b-a3b-fp8
+```
+
 ## Local compose
 
 Before starting:
@@ -149,30 +179,71 @@ When running Docker Compose on macOS with `OD_API_TOKEN` enabled, Docker Desktop
 
 `Authorization: Bearer <OD_API_TOKEN> required`
 
-Workaround:
+Workaround — apply the ready-made [`docker-compose.hostnet.yml`](./docker-compose.hostnet.yml) overlay:
 
 1. Enable host networking in Docker Desktop:
    `Docker Desktop → Settings → Resources → Network → Enable host networking → Apply and restart`
 
-2. Use a local override to docker-compose.yml:
-
-   ```yaml
-   services:
-     open-design:
-       network_mode: host
-       ports: []
-   ```
-
-3. Recreate the container:
+2. Append the overlay to your `-f` chain and recreate. From the repository root, run:
 
    ```bash
-   docker compose down
-   docker compose up -d --force-recreate
+   ROOT="$PWD"
+   docker compose --project-directory "$ROOT" \
+     -f "$ROOT/deploy/docker-compose.yml" \
+     -f "$ROOT/deploy/docker-compose.private.yml" \
+     -f "$ROOT/deploy/docker-compose.hostnet.yml" \
+     --env-file "$ROOT/deploy/.env.private" \
+     down
+   docker compose --project-directory "$ROOT" \
+     -f "$ROOT/deploy/docker-compose.yml" \
+     -f "$ROOT/deploy/docker-compose.private.yml" \
+     -f "$ROOT/deploy/docker-compose.hostnet.yml" \
+     --env-file "$ROOT/deploy/.env.private" \
+     up -d --force-recreate
    ```
 
-4. Verify:
+   If your shell is already in `./deploy`, use the parent directory as `ROOT`:
+
+   ```bash
+   ROOT="$(cd .. && pwd)"
+   docker compose --project-directory "$ROOT" \
+     -f "$ROOT/deploy/docker-compose.yml" \
+     -f "$ROOT/deploy/docker-compose.private.yml" \
+     -f "$ROOT/deploy/docker-compose.hostnet.yml" \
+     --env-file "$ROOT/deploy/.env.private" \
+     down
+   docker compose --project-directory "$ROOT" \
+     -f "$ROOT/deploy/docker-compose.yml" \
+     -f "$ROOT/deploy/docker-compose.private.yml" \
+     -f "$ROOT/deploy/docker-compose.hostnet.yml" \
+     --env-file "$ROOT/deploy/.env.private" \
+     up -d --force-recreate
+   ```
+
+   For the plain local compose, run from the repository root:
+
+   ```bash
+   ROOT="$PWD"
+   docker compose --project-directory "$ROOT" \
+     -f "$ROOT/deploy/docker-compose.yml" \
+     -f "$ROOT/deploy/docker-compose.hostnet.yml" \
+     down
+   docker compose --project-directory "$ROOT" \
+     -f "$ROOT/deploy/docker-compose.yml" \
+     -f "$ROOT/deploy/docker-compose.hostnet.yml" \
+     up -d --force-recreate
+   ```
+
+3. Verify:
 
    ```bash
    docker inspect open-design --format '{{.HostConfig.NetworkMode}}'
    # host
    ```
+
+The overlay forces the daemon to listen on `0.0.0.0` because Docker Desktop host
+networking only forwards container listeners back to the host when they bind all
+interfaces. Keep `OD_API_TOKEN` set. This is a Docker Desktop localhost
+convenience — for multi-host or public deployments, keep bridge networking and
+front the daemon with an authenticated reverse proxy that injects the bearer
+instead.

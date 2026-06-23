@@ -61,6 +61,7 @@ import {
   writeProjectTextFileDetailed,
 } from '../providers/registry';
 import type { ProjectFilePreview } from '../providers/registry';
+import { withApiTokenQuery } from '../api-auth';
 import {
   downloadImageDataUrl,
   exportAsJsx,
@@ -5257,7 +5258,7 @@ function HtmlViewer({
     needsFocusGuard,
   }) && !manualEditRequiresSrcDoc;
   const basePreviewSrcUrl = useMemo(
-    () => `${projectRawUrl(projectId, file.name)}?v=${Math.round(file.mtime)}&r=${reloadKey}&odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot`,
+    () => withApiTokenQuery(`${projectRawUrl(projectId, file.name)}?v=${Math.round(file.mtime)}&r=${reloadKey}&odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot`),
     [projectId, file.name, file.mtime, reloadKey],
   );
   const [previewSrcUrl, setPreviewSrcUrl] = useState(basePreviewSrcUrl);

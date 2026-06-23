@@ -22,6 +22,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { createHash, randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { expandHomePrefix } from './home-expansion.js';
+import { isPrivateDeployment } from './private-deployment.js';
 
 import {
   readInstallationFile,
@@ -610,6 +611,16 @@ function filterAllowedKeys(obj: Record<string, unknown>): AppConfigPrefs {
 // the new default), so opt-out users stay opted out across the
 // 0.7.x → 0.8.0 upgrade.
 function applyTelemetryDefaults(prefs: AppConfigPrefs): AppConfigPrefs {
+  // Private deployment overrides any saved or default consent: metrics,
+  // content and artifactManifest are all forced off so analytics.ts and
+  // langfuse-trace.ts short-circuit before any network call, regardless of
+  // what a user toggled in Settings → Privacy. See private-deployment.ts.
+  if (isPrivateDeployment()) {
+    return {
+      ...prefs,
+      telemetry: { metrics: false, content: false, artifactManifest: false },
+    };
+  }
   if (prefs.telemetry === undefined) {
     return {
       ...prefs,
@@ -617,6 +628,32 @@ function applyTelemetryDefaults(prefs: AppConfigPrefs): AppConfigPrefs {
     };
   }
   return prefs;
+}
+
+function applyAgentDefaults(prefs: AppConfigPrefs): AppConfigPrefs {
+  const defaultAgentId = process.env.OPEN_DESIGN_DEFAULT_AGENT_ID?.trim();
+  if (!defaultAgentId || prefs.agentId) return prefs;
+
+  const defaultModel = process.env.OPEN_DESIGN_DEFAULT_AGENT_MODEL?.trim();
+  return {
+    ...prefs,
+    agentId: defaultAgentId,
+    ...(defaultModel
+      ? {
+          agentModels: {
+            ...(prefs.agentModels ?? {}),
+            [defaultAgentId]: {
+              ...(prefs.agentModels?.[defaultAgentId] ?? {}),
+              model: defaultModel,
+            },
+          },
+        }
+      : {}),
+  };
+}
+
+function applyRuntimeDefaults(prefs: AppConfigPrefs): AppConfigPrefs {
+  return applyAgentDefaults(applyTelemetryDefaults(prefs));
 }
 
 export async function readAppConfig(dataDir: string): Promise<AppConfigPrefs> {
@@ -635,7 +672,7 @@ export async function readAppConfig(dataDir: string): Promise<AppConfigPrefs> {
   const installationDir = resolveInstallationDir(dataDir);
   const installation = await readInstallationFile(installationDir);
   if (typeof installation.installationId === 'string' && installation.installationId.length > 0) {
-    return applyTelemetryDefaults({ ...base, installationId: installation.installationId });
+    return applyRuntimeDefaults({ ...base, installationId: installation.installationId });
   }
   if (typeof base.installationId === 'string' && base.installationId.length > 0) {
     // Best-effort migration. A write failure here doesn't break the read —
@@ -647,7 +684,7 @@ export async function readAppConfig(dataDir: string): Promise<AppConfigPrefs> {
       // swallow — observability beats correctness on this path
     }
   }
-  return applyTelemetryDefaults(base);
+  return applyRuntimeDefaults(base);
 }
 
 // Synchronous mirror of readAppConfig for callers that cannot await — e.g.
@@ -665,12 +702,12 @@ export function readAppConfigSync(dataDir: string): AppConfigPrefs {
     typeof installation.installationId === 'string' &&
     installation.installationId.length > 0
   ) {
-    return applyTelemetryDefaults({
+    return applyRuntimeDefaults({
       ...base,
       installationId: installation.installationId,
     });
   }
-  return applyTelemetryDefaults(base);
+  return applyRuntimeDefaults(base);
 }
 
 function readAppConfigFileOnlySync(dataDir: string): AppConfigPrefs {

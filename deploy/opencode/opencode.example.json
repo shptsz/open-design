@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "local": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local Model",
+      "options": {
+        "baseURL": "http://model.internal:8000/v1",
+        "apiKey": "local-not-a-real-secret"
+      },
+      "models": {
+        "your-model-id": {
+          "name": "Your Local Model"
+        }
+      }
+    }
+  },
+  "model": "local/your-model-id"
+}

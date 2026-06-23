@@ -1,6 +1,6 @@
 <h1 align="center">Open Design：The open-source Claude Design alternative</h1>
 
-> 🔥 **Open Design 0.10.0 正式发布：All-in-one 的 Agentic 设计工作台。** 设计的全流程从此只需一个窗口——从一个模糊的想法出发，到发现参考、收集素材、交互式编辑、评论排队、打磨动效，再交付给编辑器或 Code Agent，全程无需离开应用。配合多会话并行，它不再只是一个助手，而是一支为你工作的本地设计团队。[下载 0.10.0](https://github.com/nexu-io/open-design/releases) · [参与讨论](https://github.com/nexu-io/open-design/discussions/4153)
+> 🔥 **Open Design 0.10.0 正式发布：All-in-one 的 Agentic 设计工作台。** 设计的全流程从此只需一个窗口——从一个模糊的想法出发，到发现参考、收集素材、交互式编辑、评论排队、打磨动效，再交付给编辑器或 Code Agent，全程无需离开应用。配合多会话并行，它不再只是一个助手，而是一支为你工作的本地设计团队。[下载 0.10.0](https://github.com/shptsz/open-design/releases) · [参与讨论](https://github.com/shptsz/open-design/discussions/4153)
 >
 > ⚡ **Open Design AMR（Agentic Model Router）——官方模型服务。** 一次充值，即可在 Open Design 里直接使用 GPT、Claude、Gemini 与 DeepSeek：20+ 旗舰模型、零配置、按真实 token 用量计费。[立即体验](https://open-design.ai/amr/)
 >
@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/nexu-io/open-design/releases"><img alt="release" src="https://img.shields.io/github/v/release/nexu-io/open-design?style=flat&color=blueviolet&label=release&include_prereleases&display_name=tag" /></a>
+  <a href="https://github.com/shptsz/open-design/releases"><img alt="release" src="https://img.shields.io/github/v/release/shptsz/open-design?style=flat&color=blueviolet&label=release&include_prereleases&display_name=tag" /></a>
   <a href="../../LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat" /></a>
   <a href="https://discord.gg/qhbcCH8Am4"><img alt="discord" src="https://img.shields.io/discord/1479002485040480266?style=flat&logo=discord&logoColor=white&label=discord&color=5865F2&cacheSeconds=3600" /></a>
   <a href="QUICKSTART.zh-CN.md"><img alt="quickstart" src="https://img.shields.io/badge/quickstart-3%20commands-green?style=flat" /></a>
@@ -290,9 +290,9 @@ Open Design (OD) 是开源替代品。同样的循环，同样的工件优先心
 
 使用 Open Design 最快的方式。无需 Node、pnpm 或克隆仓库。
 
-- **macOS**（Apple Silicon · Intel x64）→ [**open-design.ai**](https://open-design.ai/) 或 [GitHub Releases](https://github.com/nexu-io/open-design/releases)
-- **Windows**（x64）→ [**open-design.ai**](https://open-design.ai/) 或 [GitHub Releases](https://github.com/nexu-io/open-design/releases)
-- **Linux**（AppImage，可选通道）→ [GitHub Releases](https://github.com/nexu-io/open-design/releases)
+- **macOS**（Apple Silicon · Intel x64）→ [**open-design.ai**](https://open-design.ai/) 或 [GitHub Releases](https://github.com/shptsz/open-design/releases)
+- **Windows**（x64）→ [**open-design.ai**](https://open-design.ai/) 或 [GitHub Releases](https://github.com/shptsz/open-design/releases)
+- **Linux**（AppImage，可选通道）→ [GitHub Releases](https://github.com/shptsz/open-design/releases)
 
 安装后：应用自动检测 `PATH` 上的所有编码 Agent CLI，加载 100+ 技能和 150 个设计系统，打开后即可在入口视图中输入需求。
 
@@ -318,7 +318,7 @@ Agent 读取 `skills/`，选择正确的 `SKILL.md`，绑定你指定的 `DESIGN
 ### 🐳 使用 Docker 运行
 
 ```bash
-git clone https://github.com/nexu-io/open-design.git
+git clone https://github.com/shptsz/open-design.git
 cd open-design/deploy
 cp .env.example .env
 echo "OD_API_TOKEN=$(openssl rand -hex 32)" >> .env
@@ -329,7 +329,7 @@ docker compose up -d
 ### 🧑‍💻 从源码运行
 
 ```bash
-git clone https://github.com/nexu-io/open-design.git
+git clone https://github.com/shptsz/open-design.git
 cd open-design
 corepack enable && pnpm install
 pnpm tools-dev run web
@@ -589,10 +589,10 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 
 - 💬 **Discord**——日常聊天、插件分享、提问 → [**discord.gg/qhbcCH8Am4**](https://discord.gg/qhbcCH8Am4)
 - 🐦 **X / Twitter**——发版说明、里程碑、幕后 → [**@nexudotio**](https://x.com/nexudotio)
-- 🗣️ **GitHub Discussions**——深度问答、RFC、"展示你的作品" → [**Discussions**](https://github.com/nexu-io/open-design/discussions)
-- 🐛 **GitHub Issues**——Bug 报告、功能请求 → [**Issues**](https://github.com/nexu-io/open-design/issues)
+- 🗣️ **GitHub Discussions**——深度问答、RFC、"展示你的作品" → [**Discussions**](https://github.com/shptsz/open-design/discussions)
+- 🐛 **GitHub Issues**——Bug 报告、功能请求 → [**Issues**](https://github.com/shptsz/open-design/issues)
 
-[`good-first-issue`](https://github.com/nexu-io/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) 和 [`help-wanted`](https://github.com/nexu-io/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) 标签是最简单的入门方式。
+[`good-first-issue`](https://github.com/shptsz/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) 和 [`help-wanted`](https://github.com/shptsz/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) 标签是最简单的入门方式。
 
 ---
 
@@ -608,7 +608,7 @@ Open Design 之所以持续前进，是因为贡献者——设计师、工程�
 | 一个新的**设计系统** | 使用 9 节 schema 放入 `DESIGN.md` | [`design-systems/<brand>/`](../../design-systems/) |
 | 一个新的**插件** | 在分类文件夹下放入 `plugin.json` + manifest | [`plugins/community/`](../../plugins/community/) · 规范在 [`plugins/spec/SPEC.md`](../../plugins/spec/SPEC.md) · Agent 开发指南在 [`plugins/spec/AGENT-DEVELOPMENT.md`](../../plugins/spec/AGENT-DEVELOPMENT.md) |
 | 支持新的**编码 Agent CLI** | 一条适配器记录 + 流解析器 | [`apps/daemon/src/agents.ts`](../../apps/daemon/src/agents.ts) |
-| 修复 Bug 或打磨 UI | 浏览 [`good-first-issue`](https://github.com/nexu-io/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) 标签 | [Issues →](https://github.com/nexu-io/open-design/issues) |
+| 修复 Bug 或打磨 UI | 浏览 [`good-first-issue`](https://github.com/shptsz/open-design/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) 标签 | [Issues →](https://github.com/shptsz/open-design/issues) |
 | 翻译文档 | 更新 `README.<lang>.md` 文件 | [`TRANSLATIONS.md`](../../TRANSLATIONS.md) |
 
 ### 🤖 作为 Agent 贡献
@@ -617,7 +617,7 @@ Open Design 之所以持续前进，是因为贡献者——设计师、工程�
 
 ```bash
 # 1. 本地启动
-git clone https://github.com/nexu-io/open-design.git
+git clone https://github.com/shptsz/open-design.git
 cd open-design && corepack enable && pnpm install
 pnpm tools-dev run web
 
@@ -670,8 +670,8 @@ gh pr create --fill
 
 感谢每一位参与者——代码、文档、反馈、一个精准的 Issue、一个新技能、一个新设计系统。
 
-<a href="https://github.com/nexu-io/open-design/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=nexu-io/open-design&max=500&columns=20&anon=1&cache_bust=2026-05-30" alt="Open Design 贡献者" />
+<a href="https://github.com/shptsz/open-design/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=shptsz/open-design&max=500&columns=20&anon=1&cache_bust=2026-05-30" alt="Open Design 贡献者" />
 </a>
 
 ---
@@ -689,16 +689,16 @@ gh pr create --fill
 ## 给我们 Star
 
 <p align="center">
-  <a href="https://github.com/nexu-io/open-design"><img src="https://repo-assets.open-design.ai/resources/images/star-us.png" alt="在 GitHub 上给 Open Design 一个 Star — github.com/nexu-io/open-design" width="100%" /></a>
+  <a href="https://github.com/shptsz/open-design"><img src="https://repo-assets.open-design.ai/resources/images/star-us.png" alt="在 GitHub 上给 Open Design 一个 Star — github.com/shptsz/open-design" width="100%" /></a>
 </p>
 
 如果这为你节省了三十分钟，请给一个 ★。Star 不能当饭吃——但它告诉下一位设计师、Agent 和贡献者，这个实验值得他们关注。一次点击，三秒钟，真实的信号。
 
-<a href="https://star-history.com/#nexu-io/open-design&Date">
+<a href="https://star-history.com/#shptsz/open-design&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=nexu-io/open-design&type=Date&theme=dark&cache_bust=2026-05-28" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=nexu-io/open-design&type=Date&cache_bust=2026-05-28" />
-    <img alt="Open Design Star 历史" src="https://api.star-history.com/svg?repos=nexu-io/open-design&type=Date&cache_bust=2026-05-28" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=shptsz/open-design&type=Date&theme=dark&cache_bust=2026-05-28" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=shptsz/open-design&type=Date&cache_bust=2026-05-28" />
+    <img alt="Open Design Star 历史" src="https://api.star-history.com/svg?repos=shptsz/open-design&type=Date&cache_bust=2026-05-28" />
   </picture>
 </a>
 

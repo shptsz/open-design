@@ -1,0 +1,45 @@
+# Host-networking overlay — macOS Docker Desktop workaround.
+#
+# Apply this LAST, on top of the base (and optionally the private) overlay:
+#
+#   # From the repository root:
+#   ROOT="$PWD"
+#   docker compose --project-directory "$ROOT" \
+#     -f "$ROOT/deploy/docker-compose.yml" \
+#     -f "$ROOT/deploy/docker-compose.private.yml" \
+#     -f "$ROOT/deploy/docker-compose.hostnet.yml" \
+#     --env-file "$ROOT/deploy/.env.private" \
+#     up -d --force-recreate
+#
+# Why this exists:
+#   On macOS, Docker Desktop's bridge networking rewrites the source IP of
+#   browser requests, so the daemon sees the web UI as a NON-loopback peer and
+#   demands `Authorization: Bearer <OD_API_TOKEN>` on every /api call (the
+#   preview iframe / SSE then fail with API_TOKEN_REQUIRED). Running the
+#   container on the host network makes the daemon see the real 127.0.0.1 peer
+#   again, so the loopback short-circuit applies and no bearer is needed.
+#
+# Requires "Enable host networking" in:
+#   Docker Desktop -> Settings -> Resources -> Network -> Apply and restart.
+#
+# Scope: this is a Docker Desktop localhost convenience. The daemon must listen
+# on 0.0.0.0 for Docker Desktop host networking to forward it back to the host;
+# keep OD_API_TOKEN set and do NOT use this overlay for a multi-host or public
+# deployment — front those with an authenticated reverse proxy that injects the
+# bearer instead.
+
+name: open-design
+
+services:
+  open-design:
+    network_mode: host
+    # Host networking ignores published port mappings; reset the base compose
+    # mapping so Compose does not warn about ports it cannot apply.
+    ports: !reset []
+    command: ["node", "apps/daemon/dist/cli.js", "--host", "0.0.0.0", "--no-open"]
+    environment:
+      # Docker Desktop host networking only makes the daemon reachable from the
+      # host when the process listens on all container interfaces. Keep
+      # OD_API_TOKEN set in the env file; it remains the guard that prevents an
+      # accidental unauthenticated public bind.
+      OD_BIND_HOST: 0.0.0.0

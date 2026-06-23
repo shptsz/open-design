@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
+import { installApiTokenFetchAuth } from './api-auth';
 import { useAnalytics } from './analytics/provider';
 import {
   trackFileUploadResult,
@@ -115,6 +116,8 @@ import type {
   PromptTemplateSummary,
   SkillSummary,
 } from './types';
+
+installApiTokenFetchAuth();
 
 const APP_CONFIG_CHANGED_EVENT = 'open-design:app-config-changed';
 const AMR_AGENT_ID = 'amr';

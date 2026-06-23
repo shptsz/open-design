@@ -1,0 +1,55 @@
+# Thin private-deployment layer.
+#
+# Adds the OpenCode CLI on top of the upstream Open Design runtime image so a
+# self-hosted server can drive a local OpenAI-compatible model without any
+# public cloud agent. Open Design source is NOT modified here — the only code
+# change in this fork is the OPEN_DESIGN_PRIVATE_DEPLOYMENT telemetry gate
+# (see apps/daemon/src/private-deployment.ts); everything else is deployment
+# packaging and the network egress whitelist (deploy/private-egress/README.md).
+#
+# Build (two steps):
+#   1. Build the base image from deploy/Dockerfile, tag it (e.g. open-design:base).
+#   2. docker build -f deploy/Dockerfile.private \
+#        --build-arg OPEN_DESIGN_BASE_IMAGE=open-design:base \
+#        -t open-design:private .
+
+ARG OPEN_DESIGN_BASE_IMAGE=open-design:base
+FROM ${OPEN_DESIGN_BASE_IMAGE}
+
+# Proxy passthrough (mirrors deploy/Dockerfile). The OpenCode install and any
+# build-time provider warmup need egress; the CI builder usually reaches the
+# npm registry through a corporate proxy. These are build-only ARGs.
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+ARG NO_PROXY
+
+# OpenCode is distributed as the `opencode-ai` npm package; its postinstall
+# fetches the matching platform binary and exposes it as `opencode`. The
+# Open Design runtime def looks for `opencode-cli` first and falls back to
+# `opencode`, so we symlink both names. Pin OPENCODE_VERSION for reproducible
+# images in CI.
+ARG OPENCODE_VERSION=latest
+USER root
+RUN HTTP_PROXY="${HTTP_PROXY}" HTTPS_PROXY="${HTTPS_PROXY}" \
+    http_proxy="${http_proxy}" https_proxy="${https_proxy}" \
+    no_proxy="${no_proxy}" NO_PROXY="${NO_PROXY}" \
+    npm install -g "opencode-ai@${OPENCODE_VERSION}" && \
+    ln -sf "$(command -v opencode)" /usr/local/bin/opencode-cli && \
+    npm cache clean --force && \
+    # Writable, persisted HOME for OpenCode auth/cache. The container root fs
+    # is read-only at runtime; this path lives on the data volume.
+    mkdir -p /app/.od/home && \
+    chown -R open-design:open-design /app/.od
+
+USER open-design
+
+# OpenCode resolves its config home from HOME ($HOME/.config/opencode) and
+# stores auth/cache under $HOME/.local. Point HOME at the persisted volume so
+# a container restart keeps any auth state. Provider config itself is supplied
+# read-only via OPENCODE_CONFIG (see docker-compose.private.yml).
+ENV HOME=/app/.od/home
+
+# Inherits the base image ENTRYPOINT/CMD (tini -> node apps/daemon/dist/cli.js).
