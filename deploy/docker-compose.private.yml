@@ -24,7 +24,7 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.private
       args:
-        OPEN_DESIGN_BASE_IMAGE: ${OPEN_DESIGN_BASE_IMAGE:-open-design:base}
+        OPEN_DESIGN_BASE_IMAGE: ${OPEN_DESIGN_BASE_IMAGE:-crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:base}
         OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
     environment:
       # Fork telemetry kill switch — forces metrics/content consent off,

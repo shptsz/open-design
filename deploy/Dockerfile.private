@@ -8,12 +8,17 @@
 # packaging and the network egress whitelist (deploy/private-egress/README.md).
 #
 # Build (two steps):
-#   1. Build the base image from deploy/Dockerfile, tag it (e.g. open-design:base).
-#   2. docker build -f deploy/Dockerfile.private \
-#        --build-arg OPEN_DESIGN_BASE_IMAGE=open-design:base \
-#        -t open-design:private .
+#   1. Build the base image from deploy/Dockerfile and push it to ACR. Tag it
+#      with a stable moving tag (`:base`) in addition to any versioned tag so
+#      this layer can resolve it without a build-arg.
+#   2. docker build -f deploy/Dockerfile.private -t open-design:private .
+#
+# The default below points at the ACR `:base` moving tag. The base image tag is
+# version-specific, so a release pipeline that only pushes `:base-<version>`
+# must override it, e.g.:
+#   --build-arg OPEN_DESIGN_BASE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:base-0.10.0
 
-ARG OPEN_DESIGN_BASE_IMAGE=open-design:base
+ARG OPEN_DESIGN_BASE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:base
 FROM ${OPEN_DESIGN_BASE_IMAGE}
 
 # Proxy passthrough (mirrors deploy/Dockerfile). The OpenCode install and any
