@@ -19,6 +19,7 @@ ENV https_proxy=${https_proxy}
 ENV no_proxy=${no_proxy}
 ENV NO_PROXY=${NO_PROXY}
 ENV CI=true
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 ENV PNPM_HOME=/pnpm
 ENV PNPM_STORE_PATH=/pnpm/store
 ENV PATH="${PNPM_HOME}:${PATH}"
