@@ -16,6 +16,43 @@ disabled — see:
 - [`private-egress/README.md`](./private-egress/README.md) — the network egress
   allow-list (the real security boundary).
 
+### Two-stage ACR build (base → private)
+
+`Dockerfile.private` builds *on top of* the runtime image produced by
+`deploy/Dockerfile`. It resolves that base through `OPEN_DESIGN_BASE_IMAGE`,
+which defaults to the ACR **moving tag**:
+
+```text
+crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:base
+```
+
+So the base build step must push that moving `:base` tag in addition to any
+versioned tag. With buildx, pass both `-t` flags in the same step so they push
+together:
+
+```bash
+docker buildx build --progress=plain \
+  -t crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:base-<version> \
+  -t crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:base \
+  -f deploy/Dockerfile . --push
+```
+
+Then the private step needs no `--build-arg` — it resolves `:base` automatically:
+
+```bash
+docker buildx build --progress=plain \
+  -t crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:private-<version> \
+  -f deploy/Dockerfile.private . --push
+```
+
+Ordering matters: the private build must run only after the base build has
+finished pushing `:base`. If a pipeline only publishes a versioned base tag,
+override the base ref instead:
+
+```bash
+--build-arg OPEN_DESIGN_BASE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:base-<version>
+```
+
 For the Qwen3.6 LiteLLM service documented in
 `/Users/mayiming/IdeaProjects/xj_hr/litellm-deploy/QWEN_USAGE.md`, start from
 the dedicated template:
