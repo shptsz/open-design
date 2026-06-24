@@ -1,0 +1,254 @@
+# Open Design ArgoCD GitOps 发布说明
+
+## 背景
+
+当前 Kubernetes 集群部署在内网，阿里云云效流水线无法直接访问集群 API Server。集群内已经安装 ArgoCD，并且已有部分服务通过 ArgoCD 运行。
+
+因此 Open Design 推荐采用 GitOps 发布方式：
+
+- 云效只负责构建镜像并推送到 ACR。
+- 云效不直接连接内网 Kubernetes。
+- 云效更新 tools 统一部署仓库中的 Open Design 镜像版本。
+- ArgoCD 在内网集群中监听部署仓库变更，并同步到 Kubernetes。
+
+## 仓库定位
+
+已有的部署仓库作为 tools 工具类服务的统一 GitOps 仓库使用。当前仅接入 Open Design，后续其他工具服务也可以按相同方式接入。
+
+建议仓库职责：
+
+- 保存 tools 服务的 Kubernetes/Helm/Kustomize 部署配置。
+- 每个工具服务独立目录、独立 namespace、独立 ArgoCD Application。
+- 云效流水线只修改对应服务目录下的镜像 tag，不直接操作集群。
+
+推荐目录结构：
+
+```text
+tools-gitops-repo/
+  apps/
+    open-design/
+      namespace.yaml
+      deployment.yaml
+      service.yaml
+      ingress.yaml
+      kustomization.yaml
+  argocd/
+    applications/
+      open-design.yaml
+```
+
+说明：
+
+- `apps/open-design/` 保存 Open Design 的 Kubernetes 资源。
+- `argocd/applications/open-design.yaml` 保存 ArgoCD Application 配置。
+- 后续新增工具时，新增 `apps/<tool-name>/` 和 `argocd/applications/<tool-name>.yaml`，不要和 Open Design 资源混放。
+
+## 发布链路
+
+```text
+开发提交代码
+  -> 云效流水线构建 Open Design 镜像
+  -> 推送镜像到 ACR
+  -> 云效更新 tools-gitops-repo/apps/open-design/ 中的 image tag
+  -> git push 到部署仓库
+  -> ArgoCD 发现 Git 变更
+  -> ArgoCD 同步到内网 Kubernetes
+  -> Open Design 滚动发布
+```
+
+这个链路中，云效不需要访问内网 Kubernetes。只需要具备：
+
+- 访问代码仓库的权限。
+- 推送镜像到 ACR 的权限。
+- 更新 tools GitOps 部署仓库的权限。
+
+ArgoCD 需要具备：
+
+- 从 tools GitOps 部署仓库拉取配置的权限。
+- 在目标 namespace 创建或更新 Kubernetes 资源的权限。
+- 集群节点能够拉取 ACR 中的 Open Design 镜像。
+
+## ArgoCD Application 示例
+
+根据实际 Git 仓库地址、分支和 namespace 调整：
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: open-design
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:your-org/tools-gitops-repo.git
+    targetRevision: main
+    path: apps/open-design
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: open-design
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+如果你们已有 ArgoCD App of Apps 模式，可以把 `argocd/applications/open-design.yaml` 纳入现有 root Application 管理；否则可以先手动 apply 这个 Application。
+
+## Open Design Kubernetes 资源示例
+
+`apps/open-design/kustomization.yaml`：
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  # - ingress.yaml
+```
+
+`apps/open-design/namespace.yaml`：
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-design
+```
+
+`apps/open-design/deployment.yaml`：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-design
+  namespace: open-design
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open-design
+  template:
+    metadata:
+      labels:
+        app: open-design
+    spec:
+      imagePullSecrets:
+        - name: acr-pull-secret
+      containers:
+        - name: open-design
+          image: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:0.10.0
+          ports:
+            - name: http
+              containerPort: 7456
+          env:
+            - name: OD_BIND_HOST
+              value: "0.0.0.0"
+            - name: OD_PORT
+              value: "7456"
+            - name: OD_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: open-design-secret
+                  key: OD_API_TOKEN
+```
+
+`apps/open-design/service.yaml`：
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-design
+  namespace: open-design
+spec:
+  type: ClusterIP
+  selector:
+    app: open-design
+  ports:
+    - name: http
+      port: 7456
+      targetPort: http
+```
+
+如需域名访问，可以在 `apps/open-design/ingress.yaml` 中根据你们集群的 Ingress Controller 规范配置。
+
+## 密钥与镜像拉取
+
+不要把真实密钥明文提交到 GitOps 仓库。以下内容建议由集群侧预先创建，或使用 SealedSecret、ExternalSecret 等方案管理：
+
+- `OD_API_TOKEN`
+- ACR 拉取镜像凭据
+- OpenCode / 大模型供应商 token
+
+示例，仅用于说明资源名称关系：
+
+```bash
+kubectl -n open-design create secret generic open-design-secret \
+  --from-literal=OD_API_TOKEN='<replace-with-real-token>'
+
+kubectl -n open-design create secret docker-registry acr-pull-secret \
+  --docker-server=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com \
+  --docker-username='<acr-username>' \
+  --docker-password='<acr-password>'
+```
+
+## 云效流水线发布步骤
+
+构建镜像并推送到 ACR 后，新增一个更新 GitOps 仓库的步骤。该步骤只需要访问 Git，不需要访问 Kubernetes。
+
+示例：
+
+```bash
+set -euo pipefail
+
+IMAGE_TAG="${OPEN_DESIGN_VERSION}-${CI_COMMIT_SHORT_SHA}"
+IMAGE="crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:${IMAGE_TAG}"
+
+git clone git@github.com:your-org/tools-gitops-repo.git
+cd tools-gitops-repo
+
+yq -i '.spec.template.spec.containers[] |=
+  (select(.name == "open-design").image = strenv(IMAGE))' \
+  apps/open-design/deployment.yaml
+
+git config user.name "yunxiao-ci"
+git config user.email "yunxiao-ci@example.com"
+
+git add apps/open-design/deployment.yaml
+git commit -m "deploy: open-design ${IMAGE_TAG}"
+git push origin main
+```
+
+如果你们使用 Kustomize 的 `images` 字段，也可以让云效只改 `kustomization.yaml`：
+
+```yaml
+images:
+  - name: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design
+    newTag: 0.10.0
+```
+
+## 推荐落地顺序
+
+1. 在 tools GitOps 仓库中创建 `apps/open-design/`。
+2. 添加 Open Design 的 `namespace.yaml`、`deployment.yaml`、`service.yaml`、`kustomization.yaml`。
+3. 在 `argocd/applications/open-design.yaml` 中创建独立 ArgoCD Application。
+4. 在集群中准备 `open-design-secret` 和 `acr-pull-secret`。
+5. 先通过 ArgoCD 手动 Sync 验证 Open Design 能正常启动。
+6. 云效流水线增加“更新 GitOps 仓库 image tag”的步骤。
+7. 开启 ArgoCD 自动同步，或保留人工 Sync 作为发布审批点。
+
+## 后续扩展约定
+
+后续所有 tools 服务按照相同规则接入：
+
+- 每个工具一个 `apps/<tool-name>/` 目录。
+- 每个工具一个独立 ArgoCD Application。
+- 每个工具独立 namespace 和 Secret。
+- 云效只更新对应工具的 image tag。
+- 不同工具之间不要共用 Deployment、Service 或 Secret。

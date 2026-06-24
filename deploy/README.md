@@ -4,6 +4,9 @@ This deployment ships Open Design as a single Alpine-based runtime image. The
 daemon serves both the API and the built Next.js static export, so there is no
 separate nginx container.
 
+For an internal Kubernetes cluster managed by ArgoCD, see
+[`argocd-gitops.md`](./argocd-gitops.md).
+
 ## Private / offline deployment (OpenCode + local model)
 
 For a self-hosted server that must not talk to the public internet — driving a
