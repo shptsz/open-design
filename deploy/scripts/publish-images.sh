@@ -7,7 +7,7 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-docker.io}"
 IMAGE_NAMESPACE="${IMAGE_NAMESPACE:-vanjayak}"
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-open-design}"
-DEFAULT_NODE_BASE_IMAGE="crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine"
+DEFAULT_NODE_BASE_IMAGE="crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-bookworm-slim"
 NODE_BASE_IMAGE="${NODE_BASE_IMAGE:-$DEFAULT_NODE_BASE_IMAGE}"
 RUNTIME_BASE_IMAGE="${RUNTIME_BASE_IMAGE:-$DEFAULT_NODE_BASE_IMAGE}"
 PUSH_STRATEGY="${PUSH_STRATEGY:-skopeo}"
@@ -108,8 +108,8 @@ Options:
   --image_namespace <namespace>   default: vanjayak
   --image_repository <name>       default: open-design
   --image <image-ref>             override full image ref
-  --node_base_image <image-ref>   default: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
-  --runtime_base_image <image-ref> default: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
+  --node_base_image <image-ref>   default: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-bookworm-slim
+  --runtime_base_image <image-ref> default: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-bookworm-slim
   --push_strategy <skopeo|buildx> default: skopeo
   --preload_base_images <0|1>     default: 1
   --skopeo_authfile <path>        default: ~/.docker/config.json
@@ -273,14 +273,14 @@ node_local_base_image() {
   local platform="$1"
   local arch
   arch="$(platform_to_arch "$platform")" || die "unsupported platform '$platform'"
-  printf 'open-design-base-node:24-alpine-%s' "$arch"
+  printf 'open-design-base-node:24-bookworm-slim-%s' "$arch"
 }
 
 runtime_local_base_image() {
   local platform="$1"
   local arch
   arch="$(platform_to_arch "$platform")" || die "unsupported platform '$platform'"
-  printf 'open-design-runtime-base:24-alpine-%s' "$arch"
+  printf 'open-design-runtime-base:24-bookworm-slim-%s' "$arch"
 }
 
 node_image_for_platform() {

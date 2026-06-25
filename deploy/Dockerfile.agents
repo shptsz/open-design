@@ -44,31 +44,19 @@ USER root
 # both `cursor-agent` and `agent`; Open Design's runtime def looks for the
 # `cursor-agent` name.
 #
-# musl note: the base image is Alpine (musl libc), but cursor-agent bundles its
-# own *glibc*-built `node` (it fails on musl with `node: fcntl64: symbol not
-# found` — a glibc-only symbol that the lightweight `gcompat` shim does not
-# implement). The fix is to install a real, side-by-side glibc via
-# `alpine-pkg-glibc` (sgerrand). This does NOT disturb Open Design's own runtime:
-# the daemon keeps using the base image's musl `node` (musl loader), while
-# cursor-agent's bundled `node` uses the glibc loader. Each binary references its
-# own dynamic linker, so the two libc's coexist.
-#
-# ARCH note: alpine-pkg-glibc publishes x86_64 packages only. This layer
-# therefore supports linux/amd64. For linux/arm64 you must base this layer on a
-# glibc image (e.g. a debian-slim Open Design runtime) instead.
+# libc note: cursor-agent bundles its own glibc-built `node`. The Open Design
+# base image is now Debian (glibc), so the binary runs natively — no shim. (On
+# the previous Alpine/musl base it failed with `fcntl64: symbol not found` and
+# then segfaulted under an alpine-pkg-glibc shim; standardizing base/private/
+# agents on glibc is the supported fix. See deploy/Dockerfile.)
 #
 # perms note: the installer writes under $HOME. We point HOME at a world-
 # readable /opt path during install (NOT /root, which is mode 700 and unreadable
 # by the unprivileged `open-design` runtime user), then symlink the binary onto
 # the shared PATH and make the tree traversable.
-ARG GLIBC_VERSION=2.35-r1
-RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories && \
-    apk add --no-cache libstdc++ curl bash ca-certificates wget && \
-    wget -q -O /tmp/glibc.apk "https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk" && \
-    wget -q -O /tmp/glibc-bin.apk "https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk" && \
-    apk add --no-cache --allow-untrusted /tmp/glibc.apk /tmp/glibc-bin.apk && \
-    /usr/glibc-compat/sbin/ldconfig /usr/glibc-compat/lib /lib /usr/lib 2>/dev/null || true && \
-    rm -f /tmp/glibc.apk /tmp/glibc-bin.apk && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates bash && \
+    rm -rf /var/lib/apt/lists/* && \
     mkdir -p /opt/cursor-home && \
     HTTP_PROXY="${HTTP_PROXY}" HTTPS_PROXY="${HTTPS_PROXY}" \
     http_proxy="${http_proxy}" https_proxy="${https_proxy}" \

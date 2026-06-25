@@ -1,6 +1,6 @@
 # Docker deployment
 
-This deployment ships Open Design as a single Alpine-based runtime image. The
+This deployment ships Open Design as a single Debian (glibc)-based runtime image. The
 daemon serves both the API and the built Next.js static export, so there is no
 separate nginx container.
 
@@ -128,12 +128,12 @@ If a pipeline only publishes a versioned private tag, override the base ref:
 --build-arg OPEN_DESIGN_AGENTS_BASE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:private-<version>
 ```
 
-> **Alpine (musl) caveat.** cursor-agent bundles a glibc-built `node` that fails
-> on musl (`node: fcntl64: symbol not found`). The agents layer installs a real
-> side-by-side glibc via `alpine-pkg-glibc` so the bundled node loads, while
-> Open Design keeps using the base image's musl node — the two libc's coexist.
-> This supports **linux/amd64 only** (alpine-pkg-glibc has no arm64 package); for
-> arm64, base the agents layer on a glibc Open Design runtime image instead.
+> **glibc base required.** cursor-agent bundles a glibc-built `node` that
+> segfaults on Alpine/musl, so the whole `base → private → agents` chain runs on
+> a Debian (glibc) node image (see [`Dockerfile`](./Dockerfile)). Before
+> rebuilding `:base`, make sure your ACR has a glibc node tag — mirror upstream
+> `node:24-bookworm-slim` into `shpt/node:24-bookworm-slim` once (the registry
+> previously mirrored `node:24-alpine`).
 
 ### Run it
 

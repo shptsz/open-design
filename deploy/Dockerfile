@@ -1,9 +1,16 @@
-ARG NODE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
-ARG RUNTIME_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
+ARG NODE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-bookworm-slim
+ARG RUNTIME_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-bookworm-slim
 # Keep the legacy ARG names declared for older build scripts, but pin FROM to
 # ACR directly so CI cannot override the base image back to Docker Hub.
+#
+# glibc base: this image uses the Debian (glibc) node image, NOT alpine/musl.
+# The Cursor CLI added by deploy/Dockerfile.agents bundles a glibc-built node
+# that segfaults on musl; standardizing the whole base/private/agents chain on
+# glibc is the supported fix. NOTE: the ACR `shpt/node:24-bookworm-slim` tag
+# above must exist — mirror the upstream `node:24-bookworm-slim` into your ACR
+# namespace once (it previously mirrored `node:24-alpine`).
 
-FROM crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine AS build
+FROM crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-bookworm-slim AS build
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
@@ -24,8 +31,11 @@ ENV PNPM_HOME=/pnpm
 ENV PNPM_STORE_PATH=/pnpm/store
 ENV PATH="${PNPM_HOME}:${PATH}"
 
-RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories && \
-    apk add --no-cache python3 make g++
+# better-sqlite3 has no usable offline prebuild here, so node-gyp compiles it
+# from source during `pnpm install --offline`; python3/make/g++ are its toolchain.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 make g++ ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -98,12 +108,13 @@ COPY prompt-templates ./prompt-templates
 COPY assets ./assets
 COPY plugins/_official ./plugins/_official
 
-FROM crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-alpine
+FROM crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/node:24-bookworm-slim
 
-RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories && \
-    apk add --no-cache tini poppler-utils && \
-    addgroup -S -g 1001 open-design && \
-    adduser -S -D -H -u 1001 -G open-design open-design
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tini poppler-utils && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd -r -g 1001 open-design && \
+    useradd -r -u 1001 -g open-design -M -d /nonexistent -s /usr/sbin/nologin open-design
 
 WORKDIR /app
 COPY --from=build --chown=open-design:open-design /app/deploy/daemon ./apps/daemon
@@ -132,5 +143,5 @@ ENV OD_PORT=7456
 EXPOSE 7456
 
 USER open-design
-ENTRYPOINT ["/sbin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "apps/daemon/dist/cli.js", "--no-open"]
