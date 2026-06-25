@@ -108,6 +108,7 @@ resources:
   - namespace.yaml
   - deployment.yaml
   - service.yaml
+  # - pvc.yaml          # 多 Agent / 需持久化鉴权与数据时启用，见文末章节
   # - ingress.yaml
 ```
 
@@ -242,6 +243,149 @@ images:
 5. 先通过 ArgoCD 手动 Sync 验证 Open Design 能正常启动。
 6. 云效流水线增加“更新 GitOps 仓库 image tag”的步骤。
 7. 开启 ArgoCD 自动同步，或保留人工 Sync 作为发布审批点。
+
+## 多 Agent 部署（OpenCode + Cursor CLI）与配置挂载简化
+
+如果使用 `deploy/Dockerfile.agents` 构建的镜像（同时内置 OpenCode 与 Cursor
+CLI，用户在界面里二选一），k8s 侧需要挂载两类配置：OpenCode 的
+`opencode.json`（含本地模型 baseURL/apiKey）和 Cursor 的 `CURSOR_API_KEY`。
+
+不要拆成多个 ConfigMap/Secret。`opencode.json` 本身含 apiKey 属于敏感数据，
+把三项收敛进**一个 Secret**，是最简单也最安全的做法：
+
+```bash
+kubectl -n open-design create secret generic open-design-secret \
+  --from-literal=OD_API_TOKEN='<replace-with-real-token>' \
+  --from-literal=CURSOR_API_KEY='<cursor-user-or-service-account-api-key>' \
+  --from-file=opencode.json=./opencode.json
+```
+
+`opencode.json` 用集群外的 `deploy/opencode/opencode.qwen36.example.json` 复制
+改好后作为 `--from-file` 传入，不进 Git 仓库。
+
+Deployment 里同时用 env 注入两个 key、用 secret 卷把 `opencode.json` 投影成
+文件，并补上数据持久化 PVC（否则 `/app/.od` 下的 HOME、OpenCode/Cursor 鉴权
+缓存、daemon 数据每次重启都会丢失）：
+
+`apps/open-design/deployment.yaml`（多 Agent 版关键片段）：
+
+```yaml
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: acr-pull-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: open-design
+          image: crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:agents-0.10.0
+          ports:
+            - name: http
+              containerPort: 7456
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+          env:
+            - name: OD_BIND_HOST
+              value: "0.0.0.0"
+            - name: OD_PORT
+              value: "7456"
+            # 私有部署：关闭遥测与自动更新
+            - name: OPEN_DESIGN_PRIVATE_DEPLOYMENT
+              value: "1"
+            - name: OD_UPDATE_ENABLED
+              value: "0"
+            # OpenCode/Cursor 鉴权缓存写到持久化卷
+            - name: HOME
+              value: /app/.od/home
+            - name: OPENCODE_CONFIG
+              value: /app/opencode/opencode.json
+            # 默认 agent（改成 cursor-agent 即默认 Cursor，两者都仍可选）
+            - name: OPEN_DESIGN_DEFAULT_AGENT_ID
+              value: "opencode"
+            - name: OD_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: open-design-secret
+                  key: OD_API_TOKEN
+            - name: CURSOR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-design-secret
+                  key: CURSOR_API_KEY
+          volumeMounts:
+            - name: opencode-config
+              mountPath: /app/opencode
+              readOnly: true
+            - name: data
+              mountPath: /app/.od
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: opencode-config
+          secret:
+            secretName: open-design-secret
+            items:
+              - key: opencode.json
+                path: opencode.json
+        - name: data
+          persistentVolumeClaim:
+            claimName: open-design-data
+        - name: tmp
+          emptyDir: {}
+```
+
+`apps/open-design/pvc.yaml`（记得加进 `kustomization.yaml` 的 `resources`）：
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-design-data
+  namespace: open-design
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+```
+
+> Cursor CLI 不是离线的：`cursor-agent` 会连 `api2.cursor.sh`。若集群对 Pod 出网
+> 有 NetworkPolicy 限制，需放行 `cursor.com` / `api2.cursor.sh`。OpenCode 仍只连
+> 你配置的本地模型。
+
+## k8s 部署后的初始化（目标：0 手动步骤）
+
+“部署后还要手动跑命令”几乎只来自密钥。把它们也纳入 GitOps 即可消除：
+
+- **推荐（0 手动步骤）**：集群侧一次性安装 `sealed-secrets` controller 后，用
+  `kubeseal` 把上面的 `open-design-secret`（含 `opencode.json` 与
+  `CURSOR_API_KEY`）封装成 `SealedSecret` 提交到 GitOps 仓库。ArgoCD 同步时自动
+  解封，PVC 也由 git 中的 `pvc.yaml` 创建。此后发布全程无需 `kubectl`。
+
+  ```bash
+  kubectl -n open-design create secret generic open-design-secret \
+    --from-literal=OD_API_TOKEN='<token>' \
+    --from-literal=CURSOR_API_KEY='<cursor-key>' \
+    --from-file=opencode.json=./opencode.json \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > apps/open-design/sealed-secret.yaml
+  # 提交 sealed-secret.yaml 到 GitOps 仓库即可，明文不入库。
+  ```
+
+- **替代（ExternalSecret）**：密钥放外部 Vault/KMS，集群侧 External Secrets
+  Operator 拉取生成同名 Secret，GitOps 仓库只存引用。
+
+- **最小手动方案（不引入额外组件时）**：仅需两条一次性命令，且与发布解耦——
+  1. `acr-pull-secret`（镜像拉取凭据，见上文「密钥与镜像拉取」）。
+  2. 上面的 `open-design-secret`（合并后的单个 Secret）。
+
+  之后日常发布只改 image tag，不再碰这些初始化。
 
 ## 后续扩展约定
 

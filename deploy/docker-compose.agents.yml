@@ -1,0 +1,40 @@
+# Multi-agent overlay (OpenCode + Cursor CLI). Apply ON TOP of the base file
+# AND the private overlay — it reuses every private setting (telemetry kill
+# switch, local-model OpenCode config mount, writable HOME) and only swaps in
+# the agents image and adds the Cursor CLI credential:
+#
+#   docker compose \
+#     -f deploy/docker-compose.yml \
+#     -f deploy/docker-compose.private.yml \
+#     -f deploy/docker-compose.agents.yml \
+#     --env-file deploy/.env.private \
+#     up -d
+#
+# Result: both `opencode` (local model) and `cursor-agent` (Cursor cloud) are on
+# PATH, so the user picks either one in the web UI / `od` CLI at run time.
+# OPEN_DESIGN_DEFAULT_AGENT_ID (set in the private overlay / env file) only
+# decides which one is selected by default; set it to `cursor-agent` to default
+# to Cursor.
+#
+# IMPORTANT: an image built from deploy/Dockerfile.agents is NOT offline.
+# cursor-agent routes through Cursor's cloud (api2.cursor.sh). Do NOT combine
+# this overlay with the offline egress lockdown in deploy/private-egress/.
+
+name: open-design
+
+services:
+  open-design:
+    image: ${OPEN_DESIGN_AGENTS_IMAGE:-open-design:agents}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.agents
+      args:
+        OPEN_DESIGN_AGENTS_BASE_IMAGE: ${OPEN_DESIGN_AGENTS_BASE_IMAGE:-crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:private}
+    environment:
+      # Cursor CLI authentication for headless/container use. cursor-agent reads
+      # CURSOR_API_KEY automatically — no `cursor-agent login` (interactive
+      # browser flow) and no `--api-key` flag needed. Generate a User API key
+      # from Cursor Dashboard -> API Keys (a Service Account key also works and
+      # is preferred for team/CI deployments). Leave blank to keep cursor-agent
+      # visible-but-unauthenticated until a key is provided.
+      CURSOR_API_KEY: ${CURSOR_API_KEY:-}

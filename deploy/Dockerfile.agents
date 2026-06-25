@@ -1,0 +1,79 @@
+# Multi-agent deployment layer (OpenCode + Cursor CLI).
+#
+# Builds *on top of* the OpenCode-enabled private image produced by
+# deploy/Dockerfile.private, adding the Cursor CLI (`cursor-agent`) binary so a
+# single server image exposes BOTH agents. Open Design detects an agent purely
+# by whether its binary resolves on PATH, so once both `opencode-cli` (from the
+# private layer) and `cursor-agent` (added here) are present, the user can pick
+# either one in the web UI / `od` CLI at run time — no daemon code change.
+#
+# Unlike the pure-offline private image, an image built from this layer is NOT
+# offline: `cursor-agent` always routes through Cursor's cloud (api2.cursor.sh)
+# using a Cursor account. Authentication is via the CURSOR_API_KEY environment
+# variable (see docker-compose.agents.yml); browser login (`cursor-agent login`)
+# is interactive and does not work in a headless container.
+#
+# Build chain (three steps): base -> private -> agents.
+#   1. Build & push deploy/Dockerfile          -> :base
+#   2. Build & push deploy/Dockerfile.private  -> :private   (FROM :base)
+#   3. Build & push deploy/Dockerfile.agents   -> :agents    (FROM :private)
+#
+#   docker build -f deploy/Dockerfile.agents -t open-design:agents .
+#
+# The default base below points at the ACR `:private` moving tag. A pipeline
+# that only publishes versioned private tags must override it, e.g.:
+#   --build-arg OPEN_DESIGN_AGENTS_BASE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:private-0.10.0
+
+ARG OPEN_DESIGN_AGENTS_BASE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:private
+FROM ${OPEN_DESIGN_AGENTS_BASE_IMAGE}
+
+# Proxy passthrough (mirrors deploy/Dockerfile.private). The Cursor CLI install
+# downloads a platform binary from cursor.com, so the builder needs egress —
+# usually through a corporate proxy. Build-only ARGs.
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+ARG NO_PROXY
+
+USER root
+
+# Cursor CLI is distributed as a prebuilt binary via the official installer
+# (`curl https://cursor.com/install | bash`), NOT as an npm package. It exposes
+# both `cursor-agent` and `agent`; Open Design's runtime def looks for the
+# `cursor-agent` name.
+#
+# musl note: the base image is Alpine (musl libc) but the Cursor binary is
+# built for glibc. `gcompat` + `libstdc++` provide the glibc shim. If the binary
+# still fails to execute on musl, switch this layer's base to a glibc image
+# (e.g. a debian-slim Open Design runtime). The `cursor-agent --version` check
+# at the end of this RUN is the build-time gate that catches that.
+#
+# perms note: the installer writes under $HOME. We point HOME at a world-
+# readable /opt path during install (NOT /root, which is mode 700 and unreadable
+# by the unprivileged `open-design` runtime user), then symlink the binary onto
+# the shared PATH and make the tree traversable.
+RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories && \
+    apk add --no-cache gcompat libstdc++ libgcc curl bash ca-certificates && \
+    mkdir -p /opt/cursor-home && \
+    HTTP_PROXY="${HTTP_PROXY}" HTTPS_PROXY="${HTTPS_PROXY}" \
+    http_proxy="${http_proxy}" https_proxy="${https_proxy}" \
+    no_proxy="${no_proxy}" NO_PROXY="${NO_PROXY}" \
+    HOME=/opt/cursor-home bash -c 'curl -fsS https://cursor.com/install | bash' && \
+    CURSOR_BIN="$( [ -e /opt/cursor-home/.local/bin/cursor-agent ] && echo /opt/cursor-home/.local/bin/cursor-agent || find /opt/cursor-home -name cursor-agent -type f -o -name cursor-agent -type l 2>/dev/null | head -n1 )" && \
+    test -n "${CURSOR_BIN}" && \
+    ln -sf "${CURSOR_BIN}" /usr/local/bin/cursor-agent && \
+    ln -sf "${CURSOR_BIN}" /usr/local/bin/agent && \
+    chmod -R a+rX /opt/cursor-home && \
+    /usr/local/bin/cursor-agent --version
+
+USER open-design
+
+# Inherits the private layer's ENV (HOME=/app/.od/home for OpenCode auth/cache;
+# cursor-agent stores its own runtime state under the same writable HOME) and
+# ENTRYPOINT/CMD (tini -> node apps/daemon/dist/cli.js).
+#
+# Cursor authentication is supplied at run time via CURSOR_API_KEY (the daemon
+# passes its process env through to the agent subprocess, and cursor-agent reads
+# CURSOR_API_KEY automatically). See docker-compose.agents.yml.

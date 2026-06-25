@@ -74,6 +74,83 @@ baseURL: http://192.168.10.188:30400/v1
 model:   local-qwen36/qwen3.6-35b-a3b-fp8
 ```
 
+## Multi-agent image (OpenCode + Cursor CLI)
+
+If you want a single image where users can choose between **OpenCode** (local
+model) and the **Cursor CLI** (`cursor-agent`) at run time, build the agents
+layer on top of the private image. Open Design detects an agent by whether its
+binary is on `PATH`, so once both `opencode-cli` and `cursor-agent` are present
+the choice appears in the web UI and `od` CLI automatically — no code change.
+
+- [`Dockerfile.agents`](./Dockerfile.agents) — thin layer adding the Cursor CLI
+  on top of the OpenCode private image.
+- [`docker-compose.agents.yml`](./docker-compose.agents.yml) — overlay that swaps
+  in the agents image and injects `CURSOR_API_KEY`.
+
+> **Not offline.** Unlike the private image, `cursor-agent` always routes through
+> Cursor's cloud (`api2.cursor.sh`) using a Cursor account. Do **not** combine
+> this with the offline egress lockdown in [`private-egress/`](./private-egress/).
+
+### Cursor CLI authentication
+
+`cursor-agent` supports browser login (`cursor-agent login`) and API keys. Only
+**API keys** work in a headless container — browser login is interactive and
+times out. The daemon passes its process env to the agent subprocess, and
+`cursor-agent` reads `CURSOR_API_KEY` automatically, so authentication is a
+single env var (no `--api-key` flag needed):
+
+1. Generate a **User API key** from Cursor Dashboard → API Keys. (A Cursor
+   **Service Account** key also works and is preferred for team/CI deployments;
+   do *not* use an Admin API key — that one is for usage metrics, not the CLI.)
+2. Set it in `deploy/.env.private`:
+
+   ```bash
+   CURSOR_API_KEY=your_user_or_service_account_api_key
+   ```
+
+### Three-stage build (base → private → agents)
+
+Each layer is `FROM` the previous moving tag. Build/push them in order:
+
+```bash
+# 1. base (deploy/Dockerfile) — see the two-stage section above for :base.
+# 2. private (deploy/Dockerfile.private) — see the two-stage section above.
+# 3. agents (deploy/Dockerfile.agents), FROM :private
+docker buildx build --progress=plain \
+  -t crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:agents-<version> \
+  -t crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:agents \
+  -f deploy/Dockerfile.agents . --push
+```
+
+If a pipeline only publishes a versioned private tag, override the base ref:
+
+```bash
+--build-arg OPEN_DESIGN_AGENTS_BASE_IMAGE=crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com/shpt/open-design:private-<version>
+```
+
+> **Alpine (musl) caveat.** The Cursor CLI ships a glibc binary; the agents
+> layer adds `gcompat`/`libstdc++` shims and verifies with `cursor-agent
+> --version` during build. If that check fails on musl, switch the agents
+> layer's base to a glibc Open Design runtime image instead.
+
+### Run it
+
+Append the agents overlay to the private chain (it reuses every private
+setting and only adds the Cursor credential + agents image):
+
+```bash
+ROOT="$PWD"
+docker compose --project-directory "$ROOT" \
+  -f "$ROOT/deploy/docker-compose.yml" \
+  -f "$ROOT/deploy/docker-compose.private.yml" \
+  -f "$ROOT/deploy/docker-compose.agents.yml" \
+  --env-file "$ROOT/deploy/.env.private" \
+  up -d
+```
+
+Set `OPEN_DESIGN_DEFAULT_AGENT_ID=cursor-agent` in `deploy/.env.private` to
+make Cursor the default; either way both agents stay selectable in the UI.
+
 ## Local compose
 
 Before starting:
