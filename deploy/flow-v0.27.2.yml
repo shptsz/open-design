@@ -36,7 +36,7 @@ variables:
   - key: ACR_REGION
     value: 'cn-hangzhou'
   - key: IMAGE_REPO
-    value: 'shpt/open-design'
+    value: 'sh-ptsz/open-design'
 
 stages:
   CI_Stage:
