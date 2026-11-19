@@ -7,8 +7,7 @@ version: '1.0'
 #
 # 目标平台只构建 linux/amd64；服务器为 x86_64。
 #
-# 使用前替换两个服务连接 ID，并确认镜像仓库路径：
-#   <GITEE_SERVICE_CONNECTION_ID>  Gitee 代码源服务连接
+# 使用前确认 ACR 服务连接和镜像仓库路径：
 #   <ACR_SERVICE_CONNECTION_ID>    ACR 镜像仓库服务连接
 #   IMAGE_REPO                     仓库路径，需与 ACR 命名空间一致
 
@@ -20,7 +19,7 @@ sources:
     branch: main
     certificate:
       type: serviceConnection
-      serviceConnection: '<GITEE_SERVICE_CONNECTION_ID>'
+      serviceConnection: 'ik31d6wir9k8yzmw'
     # 默认手动运行；需要 push 自动触发时取消下面两行注释。
     # triggerEvents:
     #   - push
