@@ -16,7 +16,7 @@ sources:
     type: gitee
     name: open-design
     endpoint: 'https://gitee.com/playon001/open-design.git'
-    branch: main
+    branch: fix/0.27.2
     certificate:
       type: serviceConnection
       serviceConnection: 'ik31d6wir9k8yzmw'
