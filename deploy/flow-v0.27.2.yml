@@ -17,11 +17,11 @@ sources:
     name: open-design
     endpoint: 'https://gitee.com/playon001/open-design.git'
     branch: fix/0.27.2
-    # Public repository: anonymous pull, no credential needed. If Yunxiao
-    # rejects the source, restore this block with the service connection.
-    # certificate:
-    #   type: serviceConnection
-    #   serviceConnection: 'ik31d6wir9k8yzmw'
+    # Yunxiao requires a certificate block when saving the pipeline, even for
+    # a public repository.
+    certificate:
+      type: serviceConnection
+      serviceConnection: 'ik31d6wir9k8yzmw'
     # 默认手动运行；需要 push 自动触发时取消下面两行注释。
     # triggerEvents:
     #   - push
