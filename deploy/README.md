@@ -88,92 +88,9 @@ Pin a specific published image with a digest instead of the mutable `latest` tag
 ```bash
 OPEN_DESIGN_IMAGE=ghcr.io/nexu-io/od@sha256:<digest> docker compose up -d --no-build
 ```
-The image intentionally does not bundle Claude/Codex/Gemini CLI binaries. Keep
-those outside the image, or build a separate private runtime layer if a server
-deployment needs local code-agent CLIs installed in the container.
-
-## Linux: mounting host agent CLIs
-
-On Linux you can mount host-installed agent CLIs (Claude Code, opencode, Codex,
-…) into the container without rebuilding the image. The override file
-`docker-compose.linux.yml` is already loaded automatically by `install.sh` on
-Linux; it switches to `network_mode: host` and adds the CLI mounts.
-
-**1. Build the local image** (adds `libc6-compat` so glibc-linked CLIs run on Alpine):
-
-```bash
-docker build -t open-design-local -f deploy/Dockerfile.local .
-```
-
-**2. Point `.env` at the local image:**
-
-```bash
-OPEN_DESIGN_IMAGE=open-design-local
-```
-
-**3. Edit `docker-compose.linux.yml`** to match your CLI install paths, then start:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.linux.yml up -d --no-build
-```
-
-Common install paths:
-
-| CLI | Install / default path |
-|-----|------------------------|
-| Claude Code | `~/.local/bin/claude` (symlink) + `~/.local/share/claude` (binaries) |
-| opencode | `~/.opencode/bin/opencode` |
-| Codex | `~/.local/bin/codex` |
-| Vela / AMR | npm package `@powerformer/vela-cli`; [Open Design AMR](https://open-design.ai/amr) is the browser account/wallet page |
-
-Vela is published as the `@powerformer/vela-cli` npm package. The Open Design
-AMR URL above is not a shell installer. For Linux Docker, install Vela under a
-dedicated prefix so its launcher and platform package can be mounted together:
-
-```bash
-VELA_PREFIX="$HOME/.local/share/vela"
-npm install --global --prefix "$VELA_PREFIX" @powerformer/vela-cli
-export PATH="$VELA_PREFIX/bin:$PATH"
-which vela
-vela --version
-```
-
-Mount that complete prefix into the container, then expose its `bin` directory
-through `PATH` (or set `VELA_BIN` to the container-visible launcher):
-
-```yaml
-environment:
-  PATH: /mnt/host-vela/bin:/mnt/host-local-bin:/mnt/host-opencode:/usr/local/bin:/usr/bin:/bin
-  VELA_BIN: /mnt/host-vela/bin/vela
-volumes:
-  - ${HOME}/.local/share/vela:/mnt/host-vela:ro
-```
-
-Once the container is running, inspect both `PATH` discovery and any explicit
-Vela override:
-
-```bash
-docker compose exec open-design sh -lc 'which vela; echo "$VELA_BIN"'
-```
-
-Use either a `vela` launcher discoverable on `PATH` or a `VELA_BIN` path that
-exists inside the container. `VELA_BIN` is optional when `vela` is discoverable
-on `PATH`.
-
-The daemon auto-detects any CLI that is visible in `PATH` at startup — no extra
-configuration needed. For another CLI installed in a non-standard path, mount
-its complete install prefix read-only and prepend its binary directory to
-`PATH` in `docker-compose.linux.yml`, then restart. When a launcher is a symlink,
-mounting only the directory that contains the symlink may omit its target.
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.linux.yml up -d --no-build
-```
-
-If a CLI fails with `symbol not found` or relocation errors despite `libc6-compat`,
-the compose file mounts `/lib/x86_64-linux-gnu` and `/lib64` from the host read-only,
-which provides full glibc for the most demanding binaries. These paths are **amd64-only**;
-on arm64 replace them with `/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu:ro`.
+The base image intentionally does not bundle agent CLIs. Use the agents image
+(built from `deploy/Dockerfile.agents`) when a server deployment needs OpenCode
+and Cursor inside the container; the daemon discovers any CLI on `PATH`.
 
 **Upgrading from a previous install:** if you previously ran the container as a different
 user (e.g. `node`, uid 1000), the data volume may need an ownership fix before the daemon

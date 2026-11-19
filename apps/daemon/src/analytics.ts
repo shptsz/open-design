@@ -43,6 +43,7 @@ import {
   processExitMetricFields,
 } from '@open-design/contracts/analytics';
 import { readAppConfig } from './app-config.js';
+import { isPrivateDeployment } from './private-deployment.js';
 import { readTelemetryEnvironment } from './telemetry-environment.js';
 import { inferReleaseChannelFromVersion, normalizeTelemetryAppVersion, readCurrentAppVersionInfo, resolveAppVersionInfo } from './app-version.js';
 import type { MediaStockTelemetryEvent } from '@open-design/contracts/analytics';
@@ -188,6 +189,10 @@ export function readPosthogConfig(
   env: NodeJS.ProcessEnv = process.env,
   packagedRuntime?: boolean,
 ): PosthogConfig | null {
+  // Private deployment hard-off: no PostHog key is surfaced, so the web
+  // /api/analytics/config reports disabled and createAnalyticsService falls
+  // back to the no-op service (capture AND captureSafety become no-ops).
+  if (isPrivateDeployment(env)) return null;
   const key = env.POSTHOG_KEY?.trim();
   if (!key) return null;
   const host = (env.POSTHOG_HOST?.trim() || DEFAULT_HOST).replace(/\/+$/, '');

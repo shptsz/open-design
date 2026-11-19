@@ -1,2 +1,6 @@
 *.bak
 .env
+# Real OpenCode provider config holds the local model endpoint + apiKey.
+# Keep only the *.example.json committed.
+opencode/*.json
+!opencode/*.example.json

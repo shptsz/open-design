@@ -1,7 +1,16 @@
-ARG NODE_IMAGE=docker.io/library/node:24-alpine
-ARG RUNTIME_IMAGE=docker.io/library/node:24-alpine
+# glibc base: the Cursor CLI added by deploy/Dockerfile.agents bundles a
+# glibc-built node that segfaults on Alpine/musl (fcntl64 symbol errors).
+# Keep the whole base/private/agents chain on Debian bookworm-slim. The ARGs
+# still let a private registry mirror the base image without editing this file.
+ARG NODE_IMAGE=docker.io/library/node:24-bookworm-slim
+ARG RUNTIME_IMAGE=docker.io/library/node:24-bookworm-slim
 
 FROM ${NODE_IMAGE} AS build
+
+# Optional Debian mirror host (e.g. mirrors.aliyun.com). Empty keeps the image
+# default (deb.debian.org), which is the right choice for CI runners outside
+# mainland China.
+ARG APT_MIRROR=
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
@@ -18,7 +27,12 @@ ENV no_proxy=${no_proxy}
 ENV NO_PROXY=${NO_PROXY}
 ENV CI=true
 
-RUN apk add --no-cache python3 make g++
+RUN if [ -n "${APT_MIRROR}" ]; then \
+      sed -i "s|deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi && \
+    apt-get -o Acquire::Retries=5 update && \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends python3 make g++ ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -86,9 +100,16 @@ COPY data ./data
 
 FROM ${RUNTIME_IMAGE}
 
-RUN apk add --no-cache tini poppler-utils bash git && \
-    addgroup -S -g 1001 open-design && \
-    adduser -S -D -H -u 1001 -G open-design open-design
+ARG APT_MIRROR=
+
+RUN if [ -n "${APT_MIRROR}" ]; then \
+      sed -i "s|deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi && \
+    apt-get -o Acquire::Retries=5 update && \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends tini poppler-utils bash git && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd -r -g 1001 open-design && \
+    useradd -r -u 1001 -g open-design -M -d /app -s /usr/sbin/nologin open-design
 
 WORKDIR /app
 COPY --from=build --chown=open-design:open-design /app/deploy/daemon ./apps/daemon
@@ -118,5 +139,5 @@ ENV OD_PORT=7456
 EXPOSE 7456
 
 USER open-design
-ENTRYPOINT ["/sbin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "apps/daemon/dist/cli.js", "--no-open"]

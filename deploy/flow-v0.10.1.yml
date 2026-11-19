@@ -1,0 +1,74 @@
+version: '1.0'
+
+sources:
+  open_design:
+    type: github
+    name: open-design
+    endpoint: 'https://github.com/shptsz/open-design.git'
+    branch: feature/private-deployment
+    certificate:
+      type: serviceConnection
+      serviceConnection: 'l8oyfm9o9kk3gx57'
+
+variables:
+  - key: OPEN_DESIGN_VERSION
+    value: '0.10.1'
+  - key: OPENCODE_VERSION
+    value: '1.17.9'
+  - key: ACR_INSTANCE_ID
+    value: 'crpi-sxza8grrzyp8e6zm.cn-shanghai.personal.cr.aliyuncs.com'
+  - key: ACR_REGION
+    value: 'cn-shanghai'
+  - key: IMAGE_REPO
+    value: 'shpt/open-design'
+
+stages:
+  CI_Stage:
+    name: Open Design ${OPEN_DESIGN_VERSION} 镜像构建与推送
+    jobs:
+      build_job:
+        name: 构建 Open Design 镜像并推送 ACR
+        runsOn:
+          group: public/cn-hongkong
+          container: build-steps-public-registry.cn-hongkong.cr.aliyuncs.com/build-steps/alinux3:latest
+        steps:
+          build_base_step:
+            name: 构建并推送 base 镜像
+            step: DockerBuildPushACR
+            with:
+              serviceConnection: 'ladjhfypaqb4sr9x'
+              region: 'cn-shanghai'
+              dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
+              artifact: 'open-design-base'
+              dockerTag: 'base-${OPEN_DESIGN_VERSION}'
+              dockerfilePath: 'deploy/Dockerfile'
+              contextPath: '.'
+              cacheType: 'remote'
+
+          build_private_step:
+            name: 构建并推送 private 镜像（OpenCode ${OPENCODE_VERSION}）
+            step: DockerBuildPushACR
+            with:
+              serviceConnection: 'ladjhfypaqb4sr9x'
+              region: 'cn-shanghai'
+              dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
+              artifact: 'open-design-private'
+              dockerTag: 'private-${OPEN_DESIGN_VERSION}'
+              dockerfilePath: 'deploy/Dockerfile.private'
+              contextPath: '.'
+              cacheType: 'remote'
+              options: '--build-arg OPEN_DESIGN_BASE_IMAGE=${ACR_INSTANCE_ID}/${IMAGE_REPO}:base-${OPEN_DESIGN_VERSION} --build-arg OPENCODE_VERSION=${OPENCODE_VERSION}'
+
+          build_agents_step:
+            name: 构建并推送 agents 镜像（OpenCode + Cursor CLI）
+            step: DockerBuildPushACR
+            with:
+              serviceConnection: 'ladjhfypaqb4sr9x'
+              region: 'cn-shanghai'
+              dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
+              artifact: 'open-design-agents'
+              dockerTag: 'agents-${OPEN_DESIGN_VERSION}'
+              dockerfilePath: 'deploy/Dockerfile.agents'
+              contextPath: '.'
+              cacheType: 'remote'
+              options: '--build-arg OPEN_DESIGN_AGENTS_BASE_IMAGE=${ACR_INSTANCE_ID}/${IMAGE_REPO}:private-${OPEN_DESIGN_VERSION}'    

@@ -1,0 +1,77 @@
+version: '1.0'
+
+# 云效 Flow 流水线（Pipeline as Code），按 deploy/flow-v0.10.1.yml 迁移到 0.27.2。
+# 只产出实际使用的两个镜像：
+#   base    -> deploy/Dockerfile          (glibc Debian 运行时)
+#   agents  -> deploy/Dockerfile.agents   (base + OpenCode + Cursor CLI)
+#
+# 目标平台只构建 linux/amd64；服务器为 x86_64。
+#
+# 使用前替换两个服务连接 ID，并确认镜像仓库路径：
+#   <GITEE_SERVICE_CONNECTION_ID>  Gitee 代码源服务连接
+#   <ACR_SERVICE_CONNECTION_ID>    ACR 镜像仓库服务连接
+#   IMAGE_REPO                     仓库路径，需与 ACR 命名空间一致
+
+sources:
+  open_design:
+    type: gitee
+    name: open-design
+    endpoint: 'https://gitee.com/playon001/open-design.git'
+    branch: main
+    certificate:
+      type: serviceConnection
+      serviceConnection: '<GITEE_SERVICE_CONNECTION_ID>'
+    # 默认手动运行；需要 push 自动触发时取消下面两行注释。
+    # triggerEvents:
+    #   - push
+
+variables:
+  - key: OPEN_DESIGN_VERSION
+    value: '0.27.2'
+  - key: OPENCODE_VERSION
+    value: '1.19.6'
+  - key: ACR_INSTANCE_ID
+    value: 'registry.cn-hangzhou.aliyuncs.com'
+  - key: ACR_REGION
+    value: 'cn-hangzhou'
+  - key: IMAGE_REPO
+    value: 'shpt/open-design'
+
+stages:
+  CI_Stage:
+    name: Open Design ${OPEN_DESIGN_VERSION} 镜像构建与推送
+    jobs:
+      build_job:
+        name: 构建 base / agents 并推送 ACR
+        runsOn:
+          # 沿用 0.10.1 的香港构建集群，便于访问境外依赖源。
+          group: public/cn-hongkong
+          container: build-steps-public-registry.cn-hongkong.cr.aliyuncs.com/build-steps/alinux3:latest
+        steps:
+          build_base_step:
+            name: 构建并推送 base 镜像
+            step: DockerBuildPushACR
+            with:
+              serviceConnection: '<ACR_SERVICE_CONNECTION_ID>'
+              region: '${ACR_REGION}'
+              dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
+              artifact: 'open-design-base'
+              dockerTag: 'base-${OPEN_DESIGN_VERSION}'
+              dockerfilePath: 'deploy/Dockerfile'
+              contextPath: '.'
+              cacheType: 'remote'
+              options: '--platform linux/amd64'
+
+          build_agents_step:
+            name: 构建并推送 agents 镜像（OpenCode ${OPENCODE_VERSION} + Cursor CLI）
+            step: DockerBuildPushACR
+            with:
+              serviceConnection: '<ACR_SERVICE_CONNECTION_ID>'
+              region: '${ACR_REGION}'
+              dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
+              artifact: 'open-design-agents'
+              dockerTag: 'agents-${OPEN_DESIGN_VERSION}'
+              dockerfilePath: 'deploy/Dockerfile.agents'
+              contextPath: '.'
+              cacheType: 'remote'
+              options: '--platform linux/amd64 --build-arg OPEN_DESIGN_AGENTS_BASE_IMAGE=${ACR_INSTANCE_ID}/${IMAGE_REPO}:base-${OPEN_DESIGN_VERSION} --build-arg OPENCODE_VERSION=${OPENCODE_VERSION}'

@@ -1,0 +1,63 @@
+# Multi-agent deployment image (OpenCode + Cursor CLI).
+#
+# Builds directly on the base runtime image and installs both CLIs. Open Design
+# detects an agent by whether its binary resolves on PATH, so both agents
+# become selectable in the web UI / `od` CLI without daemon changes.
+#
+# NOTE: an image built from this layer is NOT offline. cursor-agent routes
+# through Cursor's cloud (api2.cursor.sh) and authenticates via CURSOR_API_KEY.
+# Do not combine it with the offline egress lockdown.
+
+ARG OPEN_DESIGN_AGENTS_BASE_IMAGE=open-design:base-0.27.2
+FROM ${OPEN_DESIGN_AGENTS_BASE_IMAGE}
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+ARG NO_PROXY
+
+# Pin OpenCode so a rebuild cannot silently change the CLI under the daemon's
+# runtime definition.
+ARG OPENCODE_VERSION=1.19.6
+
+USER root
+
+# OpenCode ships per-platform binaries through the opencode-ai npm package.
+RUN HTTP_PROXY="${HTTP_PROXY}" HTTPS_PROXY="${HTTPS_PROXY}" \
+    http_proxy="${http_proxy}" https_proxy="${https_proxy}" \
+    no_proxy="${no_proxy}" NO_PROXY="${NO_PROXY}" \
+    npm install -g "opencode-ai@${OPENCODE_VERSION}" && \
+    ln -sf "$(command -v opencode)" /usr/local/bin/opencode-cli && \
+    npm cache clean --force && \
+    mkdir -p /app/.od/home && \
+    chown -R open-design:open-design /app/.od
+
+# cursor-agent is distributed as a prebuilt glibc binary via the official
+# installer, not as an npm package. Install with HOME pointed at a
+# world-readable /opt path (not /root, which the unprivileged runtime user
+# cannot traverse), then link the binary onto the shared PATH.
+RUN apt-get -o Acquire::Retries=5 update && \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends curl ca-certificates bash && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /opt/cursor-home && \
+    HTTP_PROXY="${HTTP_PROXY}" HTTPS_PROXY="${HTTPS_PROXY}" \
+    http_proxy="${http_proxy}" https_proxy="${https_proxy}" \
+    no_proxy="${no_proxy}" NO_PROXY="${NO_PROXY}" \
+    HOME=/opt/cursor-home bash -c 'curl -fsS https://cursor.com/install | bash' && \
+    CURSOR_BIN="$( [ -e /opt/cursor-home/.local/bin/cursor-agent ] && echo /opt/cursor-home/.local/bin/cursor-agent || find /opt/cursor-home -name cursor-agent \( -type f -o -type l \) 2>/dev/null | head -n1 )" && \
+    test -n "${CURSOR_BIN}" && \
+    ln -sf "${CURSOR_BIN}" /usr/local/bin/cursor-agent && \
+    ln -sf "${CURSOR_BIN}" /usr/local/bin/agent && \
+    chmod -R a+rX /opt/cursor-home && \
+    /usr/local/bin/cursor-agent --version
+
+USER open-design
+
+# Persisted HOME for OpenCode auth/cache and cursor-agent state (data volume).
+ENV HOME=/app/.od/home
+
+# Inherits the base image ENTRYPOINT/CMD. Cursor authentication is supplied at
+# run time via CURSOR_API_KEY; the daemon passes its process environment
+# through to the agent subprocess.
