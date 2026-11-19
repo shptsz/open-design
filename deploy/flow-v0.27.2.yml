@@ -53,7 +53,7 @@ stages:
             name: 构建并推送 base 镜像
             step: DockerBuildPushACR
             with:
-              serviceConnection: '<ACR_SERVICE_CONNECTION_ID>'
+              serviceConnection: 'ik31d6wir9k8yzmw'
               region: '${ACR_REGION}'
               dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
               artifact: 'open-design-base'
@@ -67,7 +67,7 @@ stages:
             name: 构建并推送 agents 镜像（OpenCode ${OPENCODE_VERSION} + Cursor CLI）
             step: DockerBuildPushACR
             with:
-              serviceConnection: '<ACR_SERVICE_CONNECTION_ID>'
+              serviceConnection: 'ik31d6wir9k8yzmw'
               region: '${ACR_REGION}'
               dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
               artifact: 'open-design-agents'
