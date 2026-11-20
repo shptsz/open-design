@@ -6,7 +6,6 @@ version: '1.0'
 #   agents  -> deploy/Dockerfile.agents   (base + OpenCode + Cursor CLI)
 #
 # 目标平台只构建 linux/amd64；服务器为 x86_64。
-#
 # 使用前确认 ACR 服务连接和镜像仓库路径：
 #   <ACR_SERVICE_CONNECTION_ID>    ACR 镜像仓库服务连接
 #   IMAGE_REPO                     仓库路径，需与 ACR 命名空间一致
@@ -17,11 +16,11 @@ sources:
     name: open-design
     endpoint: 'https://gitee.com/playon001/open-design.git'
     branch: fix/0.27.2
-    # Yunxiao requires a certificate block when saving the pipeline, even for
-    # a public repository.
+    # Public repository: anonymous pull, no credential needed. If Yunxiao
+    # rejects the source, restore this block with the service connection.
     certificate:
       type: serviceConnection
-      serviceConnection: 'ik31d6wir9k8yzmw'
+      serviceConnection: 'jfed9rkjcoe74hzt'
     # 默认手动运行；需要 push 自动触发时取消下面两行注释。
     # triggerEvents:
     #   - push
@@ -53,8 +52,8 @@ stages:
             name: 构建并推送 base 镜像
             step: DockerBuildPushACR
             with:
-              serviceConnection: 'jfed9rkjcoe74hzt'
-              region: '${ACR_REGION}'
+              serviceConnection: 'ik31d6wir9k8yzmw'
+              region: 'cn-hangzhou'
               dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
               artifact: 'open-design-base'
               dockerTag: 'base-${OPEN_DESIGN_VERSION}'
@@ -64,11 +63,11 @@ stages:
               options: '--platform linux/amd64'
 
           build_agents_step:
-            name: 构建并推送 agents 镜像（OpenCode ${OPENCODE_VERSION} + Cursor CLI）
+            name: 构建并推送 agents 镜像（OpenCode + Cursor CLI）
             step: DockerBuildPushACR
             with:
-              serviceConnection: 'jfed9rkjcoe74hzt'
-              region: '${ACR_REGION}'
+              serviceConnection: 'ik31d6wir9k8yzmw'
+              region: 'cn-hangzhou'
               dockerRegistry: '${ACR_INSTANCE_ID}/${IMAGE_REPO}'
               artifact: 'open-design-agents'
               dockerTag: 'agents-${OPEN_DESIGN_VERSION}'
