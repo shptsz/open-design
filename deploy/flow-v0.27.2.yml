@@ -12,15 +12,13 @@ version: '1.0'
 
 sources:
   open_design:
-    type: gitee
+    type: github
     name: open-design
-    endpoint: 'https://gitee.com/playon001/open-design.git'
+    endpoint: 'https://github.com/shptsz/open-design.git'
     branch: fix/0.27.2
-    # Public repository: anonymous pull, no credential needed. If Yunxiao
-    # rejects the source, restore this block with the service connection.
     certificate:
       type: serviceConnection
-      serviceConnection: 'jfed9rkjcoe74hzt'
+      serviceConnection: 'l8oyfm9o9kk3gx57'
     # 默认手动运行；需要 push 自动触发时取消下面两行注释。
     # triggerEvents:
     #   - push
