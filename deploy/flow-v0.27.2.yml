@@ -1,6 +1,6 @@
 version: '1.0'
 
-# 云效 Flow 流水线（Pipeline as Code），按 deploy/flow-v0.10.1.yml 迁移到 0.27.2。
+# 云效 Flow 流水线（Pipeline as Code）， 0.27.2。
 # 只产出实际使用的两个镜像：
 #   base    -> deploy/Dockerfile          (glibc Debian 运行时)
 #   agents  -> deploy/Dockerfile.agents   (base + OpenCode + Cursor CLI)
